@@ -1,0 +1,6 @@
+streamlit
+openai
+supabase
+trafilatura
+pandas
+python-docx
