@@ -94,7 +94,7 @@ if st.session_state['user'] is None:
     st.stop()
 
 # ==========================================
-# ⏱️ 会员期限拦截器 (已经彻底修复了这里的排版！)
+# ⏱️ 会员期限拦截器
 # ==========================================
 USER_EMAIL = st.session_state['user'].email
 IS_ADMIN = (USER_EMAIL == ADMIN_EMAIL)
@@ -223,10 +223,17 @@ elif page == "🔍 智能精读教研室":
         with c1: 
             st.download_button("📝 导出 Word 教案", data=generate_beautiful_word(res), file_name="教案.docx", use_container_width=True)
         with c2: 
-            cat = st.selectbox("📂 分类：", ["新闻", "学术", "考试", "日常", "未分类"], label_visibility="collapsed")
+            cat = st.selectbox("📂 分类：", ["新闻时事", "学术论文", "名著小说", "考试阅读", "日常应用", "未分类"], label_visibility="collapsed")
         with c3:
             if st.button("☁️ 同步云端题库", use_container_width=True):
-                txt = "".join([f"[{i+1}] {s.get('en','')}\n译：{s.get('cn','')}\n\n" for i,s in enumerate(res.get('sentences', []))])
+                # ⚠️ 修复：将语法和词法也合并到保存的文本中
+                txt = "".join([
+                    f"[{i+1}] {s.get('en','')}\n"
+                    f"译：{s.get('cn','')}\n"
+                    f"🔍 语法：{s.get('syntax','').replace('*', '')}\n"
+                    f"💡 词法：{s.get('words','').replace('*', '')}\n\n" 
+                    for i,s in enumerate(res.get('sentences', []))
+                ])
                 try:
                     supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "category": cat}).execute()
                     for v in res.get('core_vocabulary', []): 
@@ -245,7 +252,7 @@ elif page == "🔍 智能精读教研室":
             st.dataframe(pd.DataFrame(res['core_vocabulary'])[['word', 'phonetic', 'translation', 'tags', 'memory_tip']], use_container_width=True)
 
 # ==========================================
-# 🗂️ 档案馆和记忆库
+# 🗂️ 档案馆和记忆库 (核心重构区)
 # ==========================================
 elif page == "🗂️ 文章分类档案馆":
     st.title("🗂️ 私人档案馆")
@@ -253,13 +260,25 @@ elif page == "🗂️ 文章分类档案馆":
         arts_data = supabase.table('articles').select('*').eq('user_id', CURRENT_USER_ID).execute().data
         if arts_data:
             df_arts = pd.DataFrame(arts_data)
-            cat_filter = st.selectbox("📌 筛选：", ["全部"] + list(df_arts['category'].dropna().unique()) if 'category' in df_arts.columns else ["全部"])
-            filtered_arts = df_arts[df_arts['category'] == cat_filter].to_dict('records') if cat_filter != "全部" else arts_data
-            for a in filtered_arts:
-                with st.expander(f"📖 [{a.get('category', '未分类')}] {a.get('content', '')[:60]}..."): 
-                    st.text(a.get('teaching_plan', '无'))
+            categories = ["全部"] + list(df_arts['category'].dropna().unique()) if 'category' in df_arts.columns else ["全部"]
+            
+            # ⚠️ 修复：改用顶部水平 Tabs 替代下拉框筛选
+            tabs = st.tabs(categories)
+            
+            for i, tab in enumerate(tabs):
+                with tab:
+                    cat_filter = categories[i]
+                    filtered_arts = df_arts[df_arts['category'] == cat_filter].to_dict('records') if cat_filter != "全部" else arts_data
+                    
+                    if filtered_arts:
+                        for a in filtered_arts:
+                            # 增加纯文本格式化输出，保持与网页预览一致的阅读体验
+                            with st.expander(f"📖 {a.get('content', '')[:60]}..."): 
+                                st.text(a.get('teaching_plan', '无'))
+                    else:
+                        st.info("此分类下暂无文章。")
         else: 
-            st.info("档案馆空空如也。")
+            st.info("您的档案馆空空如也，快去教研室分析并同步几篇文章吧！")
     except Exception as e: 
         pass
 
