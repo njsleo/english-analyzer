@@ -12,6 +12,7 @@ from docx.oxml import parse_xml
 from docx.oxml.ns import qn, nsdecls
 from openai import OpenAI
 from supabase import create_client, Client
+from pypdf import PdfReader
 
 # ==========================================
 # ⚙️ 核心配置区
@@ -93,6 +94,18 @@ def fetch_text_smart(url):
     try: return trafilatura.extract(trafilatura.fetch_url(url)) if trafilatura.fetch_url(url) else "⚠️ 未能识别正文"
     except: return "抓取异常"
 
+def extract_text_from_file(uploaded_file):
+    """从不同格式的文件中榨取文字内容"""
+    if uploaded_file.type == "text/plain":
+        return uploaded_file.read().decode("utf-8")
+    elif uploaded_file.type == "application/pdf":
+        reader = PdfReader(uploaded_file)
+        return "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        doc = Document(uploaded_file)
+        return "\n".join([para.text for para in doc.paragraphs])
+    return ""
+
 # ==========================================
 # 🔐 认证系统与智能侧边栏
 # ==========================================
@@ -124,17 +137,14 @@ if st.session_state['user'] is None:
 
 USER_EMAIL = st.session_state['user'].email; IS_ADMIN = (USER_EMAIL == ADMIN_EMAIL); CURRENT_USER_ID = st.session_state['user'].id
 
-# 动态导航控制 (实现从图书馆跳回教研室的魔法)
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "🔍 智能精读教研室"
-
 menu_options = ["🔍 智能精读教研室", "📚 公共教材图书馆", "🗂️ 文章分类档案馆", "🔠 词汇分级记忆库"]
 if IS_ADMIN: menu_options.append("👑 老板发卡中心")
 
 st.sidebar.markdown("## 🏛️ 工作台")
-# 绑定 session_state 以支持页面跳转
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
 page = st.sidebar.radio("核心导航：", menu_options, index=default_idx, label_visibility="collapsed")
-st.session_state['nav_page'] = page # 实时更新当前页面状态
+st.session_state['nav_page'] = page 
 
 st.sidebar.markdown("---")
 st.sidebar.caption(f"👤 {USER_EMAIL}")
@@ -156,25 +166,42 @@ if IS_ADMIN and page == "👑 老板发卡中心":
             except: st.error("生成失败")
 
 # ==========================================
-# 📚 模块：公共教材图书馆 (重磅上线)
+# 📚 模块：公共教材图书馆 (双模录入升级版)
 # ==========================================
 elif page == "📚 公共教材图书馆":
     st.title("📚 公共教材图书馆")
     
     # 👑 老板专属上传区
     if IS_ADMIN:
-        with st.expander("👑 馆长专属：上传新教材/文章", expanded=False):
-            st.info("⚠️ 请按章节上传，单次正文建议不要超过3000字，否则AI可能分析超时。")
-            lib_title = st.text_input("章节标题 (如：新概念第一册 Lesson 1)")
+        with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
+            st.info("💡 建议按章节/课文拆分上传，单次上传的文字量建议在3000词以内，方便学生阅读和AI解析。")
+            lib_title = st.text_input("章节标题 (如：哈利波特 第1章)")
             lib_cat = st.selectbox("分类", ["新概念", "小学教材", "初中教材", "高中教材", "英文名著", "阅读理解", "其他"])
-            lib_content = st.text_area("正文内容", height=150)
+            
+            # 🌟 新增：手动输入 or 文档上传双模式
+            upload_method = st.radio("录入方式", ["手动粘贴文本", "📂 上传本地文档 (PDF/Word/TXT)"], horizontal=True)
+            
+            lib_content = ""
+            if upload_method == "手动粘贴文本":
+                lib_content = st.text_area("正文内容", height=150)
+            else:
+                uploaded_file = st.file_uploader("选择文档", type=["pdf", "docx", "txt"])
+                if uploaded_file:
+                    with st.spinner("正在提取文档文字..."):
+                        lib_content = extract_text_from_file(uploaded_file)
+                    st.success("✅ 文字提取成功！可以点击下方按钮上传至书架。")
+                    with st.expander("👀 预览提取的文字 (前500字符)"):
+                        st.text(lib_content[:500] + "...")
+            
             if st.button("⬆️ 上传至公共书架", type="primary"):
-                if lib_title and lib_content:
+                if lib_title and lib_content.strip():
                     try:
                         supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute()
                         st.success("✅ 上传成功！所有用户均可看见。")
                         st.rerun()
                     except Exception as e: st.error(f"上传失败: {e}")
+                else:
+                    st.warning("请填写标题并提供/提取正文内容。")
 
     # 👥 所有人可见的借阅区
     try:
@@ -183,43 +210,29 @@ elif page == "📚 公共教材图书馆":
             df_lib = pd.DataFrame(lib_data)
             categories = ["全部"] + list(df_lib['category'].dropna().unique())
             tabs = st.tabs(categories)
-            
             for i, tab in enumerate(tabs):
                 with tab:
                     cat_filter = categories[i]
                     filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
-                    
                     if filtered_lib:
                         col_list, col_content = st.columns([1, 2.5], gap="large")
                         with col_list:
                             options = [f"{idx+1}. {a.get('title', '')}" for idx, a in enumerate(filtered_lib)]
                             selected_title = st.radio("选择篇目", options, key=f"lib_radio_{i}", label_visibility="collapsed")
-                        
                         with col_content:
                             selected_item = filtered_lib[options.index(selected_title)]
                             st.markdown(f"#### 📖 {selected_item.get('title')}")
-                            
-                            # 🎯 核心魔法：一键送去教研室
-                            if st.button("🚀 一键提取至【教研室】进行深度解析", type="primary", use_container_width=True, key=f"btn_send_{selected_item.get('id')}"):
-                                # 把内容存到缓存里
+                            if st.button("🚀 一键提取至【教研室】进行深度解析", type="primary", use_container_width=True, key=f"btn_send_{selected_item.get('id')}_{i}"):
                                 st.session_state['temp_text'] = selected_item.get('content')
-                                # 强制跳转页面
                                 st.session_state['nav_page'] = "🔍 智能精读教研室"
                                 st.rerun()
-                                
-                            st.markdown(f"""
-                            <div style='background-color: #F8F9FA; padding: 15px; border-radius: 6px; font-family: "Times New Roman", serif; font-size: 1.05em; color: #333; line-height: 1.6; max-height: 400px; overflow-y: auto; border: 1px solid #EAECEF;'>
-                                {selected_item.get('content', '')}
-                            </div>
-                            """, unsafe_allow_html=True)
+                            st.markdown(f"<div style='background-color:#F8F9FA; padding:15px; border-radius:6px; font-family:\"Times New Roman\", serif; font-size:1.05em; line-height:1.6; max-height:400px; overflow-y:auto; border:1px solid #EAECEF;'>{selected_item.get('content', '')}</div>", unsafe_allow_html=True)
                     else: st.info("该分类下暂无教材。")
-        else:
-            st.info("📚 图书馆书架还是空的，请等待馆长上新！")
-    except Exception as e:
-        st.error("图书馆加载失败，请确保您已经在 Supabase 新建了 public_library 表。")
+        else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
+    except: st.error("图书馆加载失败，请确保您已经在 Supabase 新建了 public_library 表。")
 
 # ==========================================
-# 🔍 模块：智能精读教研室 (去除了本地上传)
+# 🔍 模块：智能精读教研室
 # ==========================================
 elif page == "🔍 智能精读教研室":
     st.title("🔍 智能精读教研室")
@@ -227,10 +240,9 @@ elif page == "🔍 智能精读教研室":
     with col1: url = st.text_input("🔗 输入英文文章链接 (自动提取精选正文)：")
     with col2: 
         st.write(""); st.write("")
-        if st.button("🛰️ 提取网页内容", use_container_width=True):
+        if st.button("🛰️ 提取网页", use_container_width=True):
             if url: st.session_state['temp_text'] = fetch_text_smart(url)
     
-    # 这里的文本框会自动接收从图书馆传过来的内容
     final_text = st.text_area("📝 待分析文本：", value=st.session_state.get('temp_text', ""), height=200)
     
     if st.button("🧠 生成专家级教案", type="primary"):
@@ -255,7 +267,7 @@ elif page == "🔍 智能精读教研室":
                     supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "translation": json.dumps(res), "category": cat}).execute()
                     for v in res.get('core_vocabulary', []): v["user_id"] = CURRENT_USER_ID; supabase.table('vocabulary').insert(v).execute()
                     st.success("✅ 归档成功！您可以去【档案馆】查看了。")
-                except Exception as e: st.error("保存失败")
+                except Exception: st.error("保存失败")
                     
         for i, s in enumerate(res.get('sentences', [])):
             st.markdown(f"""<div style='background:#F4F6F1; border-radius:8px; padding:12px; margin-bottom:8px;'>
@@ -263,7 +275,7 @@ elif page == "🔍 智能精读教研室":
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# 🗂️ 档案馆 (保持原有完美逻辑)
+# 🗂️ 档案馆
 # ==========================================
 elif page == "🗂️ 文章分类档案馆":
     st.title("🗂️ 私人档案馆")
@@ -282,8 +294,7 @@ elif page == "🗂️ 文章分类档案馆":
                             selected_title = st.radio("选择文章", options, key=f"radio_{i}", label_visibility="collapsed")
                         with col_content:
                             selected_art = filtered_arts[options.index(selected_title)]
-                            art_id = selected_art.get('id')
-                            raw_json = selected_art.get('translation', '')
+                            art_id = selected_art.get('id'); raw_json = selected_art.get('translation', '')
                             try: full_analysis = json.loads(raw_json) if raw_json else None
                             except: full_analysis = None
                             

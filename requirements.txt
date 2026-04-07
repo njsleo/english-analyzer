@@ -4,3 +4,5 @@ supabase
 trafilatura
 pandas
 python-docx
+pypdf
+python-docx
