@@ -15,9 +15,9 @@ from supabase import create_client, Client
 # ==========================================
 # ⚙️ 核心配置区
 # ==========================================
-DEEPSEEK_API_KEY = "替换成你的_DeepSeek_API_Key"
-SUPABASE_URL = "替换成你的_Supabase_Project_URL"
-SUPABASE_KEY = "替换成你的_Supabase_anon_public_Key"
+DEEPSEEK_API_KEY = "sk-462830ffe3424e8a820f0bd3aee786b0"
+SUPABASE_URL = "https://grtnteyfjbanmdfhwbwg.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydG50ZXlmamJhbm1kZmh3YndnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzODI0MDcsImV4cCI6MjA5MDk1ODQwN30.LqR-QLHKW4Hag71tJLeagYPvOOIyCD7UrWXwfYzwGuU"
 ADMIN_EMAIL = "75736724@qq.com" # 👑 老板权限唯一识别邮箱
 
 llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
