@@ -24,7 +24,7 @@ llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================================
-# 🎨 UI/UX 顶级视觉系统 (护眼紧凑版)
+# 🎨 UI/UX 顶级视觉系统 (精准隔离版)
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
@@ -34,35 +34,48 @@ custom_css = """
     .stApp { background-color: #FAFAFC; }
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     
-    /* 侧边栏瘦身与精致化 */
-    [data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
-    [data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
-    [data-testid="stSidebar"] .stAlert p { color: #8892B0 !important; font-size: 0.8em; }
+    /* ==========================================
+       1. 侧边栏专属 UI (高级黑)
+       ========================================== */
+    section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
+    section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
+    section[data-testid="stSidebar"] .stAlert p { color: #8892B0 !important; font-size: 0.8em; }
     
-    /* 侧边栏导航：紧凑、小字体 */
-    [data-testid="stSidebar"] div[role="radiogroup"] { gap: 4px; }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label { padding: 8px 12px !important; border-radius: 6px !important; margin: 0 !important; transition: all 0.2s ease; border: 1px solid transparent !important; cursor: pointer; }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #F0F0F5 !important; font-size: 0.85em !important; font-family: 'DengXian', '等线', sans-serif !important; margin: 0; }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover { background-color: #202535 !important; }
-    [data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] { background-color: #1a1e2a !important; border-left: 3px solid #00B4D8 !important; font-weight: bold !important; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] { gap: 4px; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 12px !important; border-radius: 6px !important; margin: 0 !important; transition: all 0.2s ease; border: none !important; cursor: pointer; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #8892B0 !important; font-size: 0.85em !important; font-family: 'DengXian', '等线', sans-serif !important; margin: 0; }
     
-    /* 主界面文章列表：极度紧凑、无突兀间距 */
-    [data-testid="stAppViewContainer"] div[role="radiogroup"] { gap: 4px !important; }
-    [data-testid="stAppViewContainer"] div[role="radiogroup"] > label { 
-        padding: 6px 10px !important; 
-        background: #FFFFFF; 
-        border: 1px solid #EAECEF; 
-        border-radius: 6px; 
-        transition: background 0.1s;
+    /* 侧边栏悬停与选中状态 */
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover { background-color: #202535 !important; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover p { color: #F0F0F5 !important; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] { background-color: #1a1e2a !important; border-left: 3px solid #00B4D8 !important; }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
+    
+    /* ==========================================
+       2. 主界面专属 UI (如档案馆列表)
+       ========================================== */
+    section[data-testid="stMain"] div[role="radiogroup"] { gap: 2px !important; }
+    section[data-testid="stMain"] div[role="radiogroup"] > label { 
+        background-color: transparent !important; /* 透明融于背景，去白底 */
+        border: none !important; 
+        border-radius: 6px !important;
+        padding: 8px 10px !important; 
+        transition: all 0.2s;
     }
-    [data-testid="stAppViewContainer"] div[role="radiogroup"] > label p { font-size: 0.85em !important; color: #444; margin: 0;}
-    [data-testid="stAppViewContainer"] div[role="radiogroup"] > label[data-checked="true"] {
-        background: #F0F4F8 !important;
-        border-color: #C2D1DF !important;
-    }
-    [data-testid="stAppViewContainer"] div[role="radiogroup"] > label[data-checked="true"] p { font-weight: 600; color: #111;}
+    section[data-testid="stMain"] div[role="radiogroup"] > label p { font-size: 0.85em !important; color: #555; margin: 0;}
     
-    /* 按钮美化 */
+    /* 主界面悬停与选中状态 */
+    section[data-testid="stMain"] div[role="radiogroup"] > label:hover { background-color: #EAECEF !important; }
+    section[data-testid="stMain"] div[role="radiogroup"] > label[data-checked="true"] {
+        background-color: #E2E6EA !important; /* 柔和的高级灰 */
+        border-left: 3px solid #1F4E79 !important; /* 深蓝指示条 */
+        border-radius: 4px !important;
+    }
+    section[data-testid="stMain"] div[role="radiogroup"] > label[data-checked="true"] p { font-weight: bold !important; color: #111 !important;}
+    
+    /* ==========================================
+       3. 全局通用组件
+       ========================================== */
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 </style>
@@ -231,7 +244,6 @@ elif page == "🔍 智能精读教研室":
         with c2: cat = st.selectbox("📂 分类：", ["新闻", "学术", "考试", "未分类"], label_visibility="collapsed")
         with c3:
             if st.button("☁️ 同步云端", use_container_width=True):
-                # 保存时去除多余空行，极致紧凑
                 txt = "".join([f"[{i+1}] {s.get('en','')}\n译：{s.get('cn','')}\n🔍 语法：{s.get('syntax','').replace('*', '')}\n💡 词法：{s.get('words','').replace('*', '')}\n\n" for i,s in enumerate(res.get('sentences', []))])
                 try:
                     supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "category": cat}).execute()
@@ -245,7 +257,7 @@ elif page == "🔍 智能精读教研室":
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
 
 # ==========================================
-# 🗂️ 档案馆 (黄金比例分栏 + 护眼底色 + 紧凑呈现)
+# 🗂️ 档案馆 (极限压缩分栏 + 彻底去白底)
 # ==========================================
 elif page == "🗂️ 文章分类档案馆":
     st.title("🗂️ 私人档案馆")
@@ -262,8 +274,8 @@ elif page == "🗂️ 文章分类档案馆":
                     filtered_arts = [a for a in arts_data if a.get('category') == cat_filter] if cat_filter != "全部" else arts_data
                     
                     if filtered_arts:
-                        # ⚠️ 黄金分割比例：左边窄，右边宽
-                        col_list, col_content = st.columns([1, 2.5], gap="medium")
+                        # ⚠️ 极限压缩比例：左侧栏缩窄为 1，阅读区扩宽为 3.5
+                        col_list, col_content = st.columns([1, 3.5], gap="large")
                         
                         with col_list:
                             st.markdown("##### 📑 归档列表")
