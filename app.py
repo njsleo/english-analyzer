@@ -48,6 +48,67 @@ custom_css = """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 # ==========================================
+# 🛠️ 核心工具函数区 (修复位置：统一提前声明)
+# ==========================================
+def set_font(run, ascii_font='Times New Roman', east_asia_font='等线'): 
+    run.font.name = ascii_font
+    run._element.rPr.rFonts.set(qn('w:eastAsia'), east_asia_font)
+
+def export_plain_text_to_word(text_content):
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name, style.font.size = 'Times New Roman', Pt(11)
+    style._element.rPr.rFonts.set(qn('w:eastAsia'), '等线')
+    doc.add_heading('📖 英语精读教案 (归档备份)', 0)
+    for line in text_content.split('\n'):
+        if line.strip():
+            p = doc.add_paragraph()
+            run = p.add_run(line)
+            set_font(run)
+    bio = io.BytesIO()
+    doc.save(bio)
+    return bio.getvalue()
+
+def generate_beautiful_word(analysis_data):
+    doc = Document()
+    style = doc.styles['Normal']
+    style.font.name, style.font.size = 'Times New Roman', Pt(10.5)
+    style._element.rPr.rFonts.set(qn('w:eastAsia'), '等线')
+    doc.add_heading('📖 英语精读教案', 0)
+    for i, s in enumerate(analysis_data.get('sentences', [])):
+        run_en = doc.add_paragraph().add_run(f"[{i+1}] {s.get('en', '')}")
+        run_en.bold, run_en.font.size = True, Pt(14)
+        set_font(run_en)
+        run_cn = doc.add_paragraph().add_run(f"译文：{s.get('cn', '')}")
+        run_cn.font.size = Pt(11)
+        set_font(run_cn)
+        p_syn = doc.add_paragraph()
+        p_syn.paragraph_format.left_indent = Pt(15)
+        r_l1 = p_syn.add_run("🔍 语法：")
+        r_l1.bold, r_l1.font.color.rgb = True, RGBColor(0x1F, 0x4E, 0x79)
+        set_font(r_l1)
+        r_t1 = p_syn.add_run(s.get('syntax', '').replace('*', ''))
+        set_font(r_t1)
+        if s.get('words'): 
+            p_w = doc.add_paragraph(style='List Bullet')
+            r_l2 = p_w.add_run("💡 词法：")
+            r_l2.bold, r_l2.font.color.rgb = True, RGBColor(0xC0, 0x00, 0x00)
+            set_font(r_l2)
+            r_t2 = p_w.add_run(s.get('words', '').replace('*', ''))
+            set_font(r_t2)
+    bio = io.BytesIO()
+    doc.save(bio)
+    return bio.getvalue()
+
+def fetch_text_smart(url): 
+    try: 
+        downloaded = trafilatura.fetch_url(url)
+        return trafilatura.extract(downloaded) if downloaded else "⚠️ 未能识别正文"
+    except Exception as e: 
+        return "抓取异常"
+
+
+# ==========================================
 # 🔐 商业版认证系统
 # ==========================================
 if 'user' not in st.session_state: 
@@ -126,9 +187,11 @@ if st.sidebar.button("🚪 安全退出系统", use_container_width=True):
     st.session_state['user'] = None
     st.rerun()
 
+
 # ==========================================
-# 👑 模块 4：老板发卡中心
+# 👑 路由分发区 (严格遵守 if...elif 结构)
 # ==========================================
+
 if IS_ADMIN and page == "👑 老板发卡中心":
     st.title("👑 发卡中心")
     with st.form("gen_code_form"):
@@ -144,72 +207,6 @@ if IS_ADMIN and page == "👑 老板发卡中心":
             except Exception as e: 
                 st.error("生成激活码失败，请检查数据库权限设置 (RLS)。")
 
-# ==========================================
-# 📝 辅助工具函数区 (Word导出)
-# ==========================================
-def set_font(run, ascii_font='Times New Roman', east_asia_font='等线'): 
-    run.font.name = ascii_font
-    run._element.rPr.rFonts.set(qn('w:eastAsia'), east_asia_font)
-
-# 纯文本转 Word (用于档案馆重新导出)
-def export_plain_text_to_word(text_content):
-    doc = Document()
-    style = doc.styles['Normal']
-    style.font.name, style.font.size = 'Times New Roman', Pt(11)
-    style._element.rPr.rFonts.set(qn('w:eastAsia'), '等线')
-    
-    doc.add_heading('📖 英语精读教案 (归档备份)', 0)
-    for line in text_content.split('\n'):
-        if line.strip():
-            p = doc.add_paragraph()
-            run = p.add_run(line)
-            set_font(run)
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
-
-# JSON分析转 Word (用于精读室首次生成)
-def generate_beautiful_word(analysis_data):
-    doc = Document()
-    style = doc.styles['Normal']
-    style.font.name, style.font.size = 'Times New Roman', Pt(10.5)
-    style._element.rPr.rFonts.set(qn('w:eastAsia'), '等线')
-    doc.add_heading('📖 英语精读教案', 0)
-    for i, s in enumerate(analysis_data.get('sentences', [])):
-        run_en = doc.add_paragraph().add_run(f"[{i+1}] {s.get('en', '')}")
-        run_en.bold, run_en.font.size = True, Pt(14)
-        set_font(run_en)
-        run_cn = doc.add_paragraph().add_run(f"译文：{s.get('cn', '')}")
-        run_cn.font.size = Pt(11)
-        set_font(run_cn)
-        p_syn = doc.add_paragraph()
-        p_syn.paragraph_format.left_indent = Pt(15)
-        r_l1 = p_syn.add_run("🔍 语法：")
-        r_l1.bold, r_l1.font.color.rgb = True, RGBColor(0x1F, 0x4E, 0x79)
-        set_font(r_l1)
-        r_t1 = p_syn.add_run(s.get('syntax', '').replace('*', ''))
-        set_font(r_t1)
-        if s.get('words'): 
-            p_w = doc.add_paragraph(style='List Bullet')
-            r_l2 = p_w.add_run("💡 词法：")
-            r_l2.bold, r_l2.font.color.rgb = True, RGBColor(0xC0, 0x00, 0x00)
-            set_font(r_l2)
-            r_t2 = p_w.add_run(s.get('words', '').replace('*', ''))
-            set_font(r_t2)
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
-
-def fetch_text_smart(url): 
-    try: 
-        downloaded = trafilatura.fetch_url(url)
-        return trafilatura.extract(downloaded) if downloaded else "⚠️ 未能识别正文"
-    except Exception as e: 
-        return "抓取异常"
-
-# ==========================================
-# 🔍 智能精读室
-# ==========================================
 elif page == "🔍 智能精读教研室":
     st.title("🔍 智能精读教研室")
     col1, col2 = st.columns([3, 1])
@@ -271,9 +268,6 @@ elif page == "🔍 智能精读教研室":
         if res.get('core_vocabulary'): 
             st.dataframe(pd.DataFrame(res['core_vocabulary'])[['word', 'phonetic', 'translation', 'tags', 'memory_tip']], use_container_width=True)
 
-# ==========================================
-# 🗂️ 档案馆 (体验重构区)
-# ==========================================
 elif page == "🗂️ 文章分类档案馆":
     st.title("🗂️ 私人档案馆")
     try:
@@ -282,7 +276,6 @@ elif page == "🗂️ 文章分类档案馆":
             df_arts = pd.DataFrame(arts_data)
             categories = ["全部"] + list(df_arts['category'].dropna().unique()) if 'category' in df_arts.columns else ["全部"]
             
-            # 使用顶部水平 Tabs 显示分类
             tabs = st.tabs(categories)
             
             for i, tab in enumerate(tabs):
@@ -291,28 +284,19 @@ elif page == "🗂️ 文章分类档案馆":
                     filtered_arts = [a for a in arts_data if a.get('category') == cat_filter] if cat_filter != "全部" else arts_data
                     
                     if filtered_arts:
-                        # 采用经典的“左右分栏阅读模式”
                         col_list, col_content = st.columns([1, 2], gap="large")
-                        
                         with col_list:
                             st.markdown("##### 📑 归档文章列表")
-                            # 生成带有序号的标题选项，防止标题重复导致选择失效
                             options = [f"{idx+1}. {a.get('content', '')[:30]}..." for idx, a in enumerate(filtered_arts)]
-                            # 左侧文章选择器
                             selected_title = st.radio("选择文章", options, key=f"radio_{i}", label_visibility="collapsed")
                         
                         with col_content:
-                            # 找出当前被选中的文章
                             selected_idx = options.index(selected_title)
                             selected_art = filtered_arts[selected_idx]
                             art_id = selected_art.get('id')
-                            
                             st.markdown(f"#### 📖 当前阅读区")
-                            
-                            # 右侧操作按钮栏
                             act_col1, act_col2 = st.columns(2)
                             with act_col1:
-                                # 提供重新导出 Word 的功能
                                 st.download_button(
                                     "📥 重新导出教案 (Word)", 
                                     data=export_plain_text_to_word(selected_art.get('teaching_plan', '')), 
@@ -321,14 +305,12 @@ elif page == "🗂️ 文章分类档案馆":
                                     key=f"dl_{art_id}_{i}"
                                 )
                             with act_col2:
-                                # 提供一键删除功能
                                 if st.button("🗑️ 永久删除此文章", key=f"del_{art_id}_{i}", use_container_width=True):
                                     supabase.table('articles').delete().eq('id', art_id).execute()
                                     st.success("✅ 删除成功！")
                                     st.rerun()
                                     
                             st.divider()
-                            # 展示文章内容，使用 text 可以完美保留之前的换行格式
                             st.text(selected_art.get('teaching_plan', '暂无保存的教案内容'))
                     else:
                         st.info("此分类下暂无文章。")
@@ -337,9 +319,6 @@ elif page == "🗂️ 文章分类档案馆":
     except Exception as e: 
         st.error(f"加载归档数据失败: {e}")
 
-# ==========================================
-# 🔠 记忆库
-# ==========================================
 elif page == "🔠 词汇分级记忆库":
     st.title("🔠 私人专属词汇库")
     try:
