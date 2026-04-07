@@ -118,14 +118,14 @@ if 'user' not in st.session_state: st.session_state['user'] = None
 if st.session_state['user'] is None:
     st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🏛️ 顶级英语精读工作台</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #666;'>专业教研 · 深度分析 · 邀请制商业版</p>", unsafe_allow_html=True)
-    _, col_auth, _ = st.columns([1, 1, 1]); 
+    _, col_auth, _ = st.columns([1, 1, 1])
     with col_auth:
         tab_login, tab_signup = st.tabs(["🔑 账号登录", "🎟️ 凭邀请码注册"])
         with tab_login:
             login_email = st.text_input("邮箱地址", key="l_email"); login_pwd = st.text_input("登录密码", type="password", key="l_pwd")
             if st.button("立即验证并进入", use_container_width=True, type="primary"):
                 try: response = supabase.auth.sign_in_with_password({"email": login_email, "password": login_pwd}); st.session_state['user'] = response.user; st.rerun()
-                except: st.error("账号或密码有误。")
+                except Exception: st.error("账号或密码有误。")
         with tab_signup:
             signup_email = st.text_input("设置登录邮箱", key="s_email"); signup_pwd = st.text_input("设置登录密码 (至少6位)", type="password", key="s_pwd"); signup_code = st.text_input("🔑 专属邀请码")
             if st.button("核销邀请码并注册", use_container_width=True):
@@ -139,7 +139,7 @@ if st.session_state['user'] is None:
                                 supabase.auth.sign_up({"email": signup_email, "password": signup_pwd}); duration = code_res.data[0]['duration_days']; exp_date = (datetime.datetime.now() + datetime.timedelta(days=duration)).isoformat()
                                 supabase.table('invitation_codes').update({'is_used': True}).eq('code', signup_code).execute(); supabase.table('subscriptions').insert({'user_email': signup_email, 'expires_at': exp_date}).execute()
                                 st.success(f"✅ 注册成功，为您开通了 {duration} 天权限。请登录。")
-                            exceptException: st.error("注册失败，请检查邮箱或联系管理员。")
+                            except Exception: st.error("注册失败，请检查邮箱或联系管理员。")
     st.stop()
 
 # ==========================================
@@ -158,7 +158,6 @@ if not IS_ADMIN:
 st.sidebar.markdown("## 🏛️ 工作台")
 
 # 🎯 核心：干净、无数字、带有商业感的 Radio 选项卡样式
-# 彻底去除了编号，保持干净
 menu_options = [
     "🔍 智能精读教研室", 
     "🗂️ 文章分类档案馆", 
@@ -178,7 +177,7 @@ if st.sidebar.button("🚪 安全退出系统", use_container_width=True):
     st.rerun()
 
 # ==========================================
-# 👑 模块 4：老板发卡中心 (与之前完全一致)
+# 👑 模块 4：老板发卡中心
 # ==========================================
 if IS_ADMIN and page == "👑 老板发卡中心":
     st.title("👑 发卡中心")
@@ -190,17 +189,16 @@ if IS_ADMIN and page == "👑 老板发卡中心":
             try:
                 supabase.table('invitation_codes').insert({"code": new_code, "duration_days": days_map[plan], "is_used": False}).execute()
                 st.code(new_code, language="text"); st.success(f"生成成功，有效期: {days_map[plan]} 天")
-            exceptException: st.error("生成激活码失败，请检查数据库。")
+            except Exception: st.error("生成激活码失败，请检查数据库。")
 
 # ==========================================
-# 🔍 智能精读室 (以下为之前完全复用的核心逻辑与排版)
+# 🔍 智能精读室 (提取核心正文)
 # ==========================================
 elif page == "🔍 智能精读教研室":
     st.title("🔍 智能精读教研室")
-    # (爬虫与 Word 生成保持不变)
     def fetch_text_smart(url): 
         try: downloaded = trafilatura.fetch_url(url); return trafilatura.extract(downloaded) if downloaded else "⚠️ 未能识别正文"
-        exceptException: return "抓取异常"
+        except Exception: return "抓取异常"
     def set_font(run, ascii_font='Times New Roman', east_asia_font='等线'): run.font.name = ascii_font; run._element.rPr.rFonts.set(qn('w:eastAsia'), east_asia_font)
     def generate_beautiful_word(analysis_data):
         doc = Document(); style = doc.styles['Normal']; style.font.name, style.font.size = 'Times New Roman', Pt(10.5); style._element.rPr.rFonts.set(qn('w:eastAsia'), '等线'); doc.add_heading('📖 英语精读教案', 0)
@@ -220,20 +218,20 @@ elif page == "🔍 智能精读教研室":
         if not final_text.strip(): st.error("请先输入文本")
         else:
             with st.spinner("AI教研员正在逐句切片中..."):
-                prompt = f"""以JSON格式输出全句拆解：{final_text}""" 
+                prompt = f"""以JSON格式输出全句拆解：{{"sentences": [{{"en": "原句英文", "cn": "翻译", "syntax": "极简语法", "words": "核心词法"}}], "core_vocabulary": [{{"word": "单词", "phonetic": "音标", "translation": "释义", "memory_tip": "记忆法", "usage_examples": "造句", "tags": "级别"}}]}} 待分析：\n{final_text}""" 
                 try:
                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                     st.session_state['analysis_result'] = json.loads(res.choices[0].message.content); st.session_state['article_content'] = final_text; st.rerun()
-                exceptException: st.error("分析失败。")
+                except Exception: st.error("分析失败。")
 
     if 'analysis_result' in st.session_state:
         res = st.session_state['analysis_result']; st.divider()
         c1, c2, c3 = st.columns(3)
         with c1: st.download_button("📝 导出 Word 教案", data=generate_beautiful_word(res), file_name="教案.docx", use_container_width=True)
-        with c2: cat = st.selectbox("📂 分类：", ["新闻", "学术", "考试", "其他"], label_visibility="collapsed")
+        with c2: cat = st.selectbox("📂 分类：", ["新闻", "学术", "考试", "其他", "未分类"], label_visibility="collapsed")
         with c3:
             if st.button("☁️ 同步云端题库", use_container_width=True):
-                txt = "".join([f"[{i+1}] {s.get('en','')}\譯：{s.get('cn','')}\n\n" for i,s in enumerate(res.get('sentences', []))]); supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "category": cat}).execute()
+                txt = "".join([f"[{i+1}] {s.get('en','')}\n译：{s.get('cn','')}\n\n" for i,s in enumerate(res.get('sentences', []))]); supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "category": cat}).execute()
                 for v in res.get('core_vocabulary', []): v["user_id"] = CURRENT_USER_ID; supabase.table('vocabulary').insert(v).execute()
                 st.success("✅ 保存至您的私人空间。")
         for i, s in enumerate(res.get('sentences', [])):
@@ -243,7 +241,9 @@ elif page == "🔍 智能精读教研室":
                 <div style='font-size:0.95em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
         if res.get('core_vocabulary'): st.dataframe(pd.DataFrame(res['core_vocabulary'])[['word', 'phonetic', 'translation', 'tags', 'memory_tip']], use_container_width=True)
 
-# 档案馆和记忆库与 3.0 版一致
+# ==========================================
+# 🗂️ 模块 2 & 3: 档案馆和记忆库
+# ==========================================
 elif page == "🗂️ 文章分类档案馆":
     st.title("🗂️ 私人档案馆")
     try:
@@ -254,7 +254,7 @@ elif page == "🗂️ 文章分类档案馆":
             for a in filtered_arts:
                 with st.expander(f"📖 [{a.get('category', '未分类')}] {a.get('content', '')[:60]}..."): st.text(a.get('teaching_plan', '无'))
         else: st.info("档案馆空空如也。")
-    exceptException: pass
+    except Exception: pass
 
 elif page == "🔠 词汇分级记忆库":
     st.title("🔠 私人专属词汇库")
@@ -266,4 +266,4 @@ elif page == "🔠 词汇分级记忆库":
             st.metric("您的生词量", len(display_df)); st.dataframe(display_df[['word', 'phonetic', 'translation', 'tags', 'memory_tip']], use_container_width=True)
             st.download_button("📥 导出私人词汇", display_df.to_csv(index=False).encode('utf-8-sig'), f"Vocabulary.csv", "text/csv")
         else: st.info("您还没有收藏生词。")
-    exceptException: pass
+    except Exception: pass
