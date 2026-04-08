@@ -156,10 +156,9 @@ if not IS_ADMIN:
     else:
         is_expired = True
 
-# --- 侧边栏渲染 (包含导航和充值接口) ---
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词汇分级记忆库"]
-if IS_ADMIN: menu_options.append("👑 老板发卡中心")
+if IS_ADMIN: menu_options.append("👑 老板管理后台")
 
 st.sidebar.markdown("## 🏛️ 工作台")
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
@@ -172,44 +171,117 @@ if current_exp and not IS_ADMIN:
     status_icon = "🔴" if is_expired else "🟢"
     st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
 
-# 💳 续费充值模块 (老板和用户都可以用)
-with st.sidebar.expander("💳 激活码充值 / 续费"):
+with st.sidebar.expander("💳 自助激活码续费"):
     renew_code = st.text_input("激活码", placeholder="请输入新的激活码", label_visibility="collapsed")
-    if st.button("确认续费", use_container_width=True, type="primary"):
+    if st.button("确认续费", use_container_width=True):
         if renew_code:
             code_res = supabase.table('invitation_codes').select('*').eq('code', renew_code).eq('is_used', False).execute()
             if code_res.data:
-                duration = code_res.data[0]['duration_days']
-                now = datetime.datetime.now()
-                # 核心逻辑：如果没过期，在原来基础上累加；如果过期了，从今天开始算
+                duration = code_res.data[0]['duration_days']; now = datetime.datetime.now()
                 base_date = current_exp if (current_exp and current_exp > now) else now
                 new_exp = base_date + datetime.timedelta(days=duration)
-                
-                # 销毁激活码并更新期限
                 supabase.table('invitation_codes').update({'is_used': True}).eq('code', renew_code).execute()
                 check_sub = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
-                if check_sub.data:
-                    supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', USER_EMAIL).execute()
-                else:
-                    supabase.table('subscriptions').insert({'user_email': USER_EMAIL, 'expires_at': new_exp.isoformat()}).execute()
-                st.success(f"✅ 续费成功！增加了 {duration} 天VIP。")
-                st.rerun()
-            else: st.error("❌ 激活码无效或已被使用")
+                if check_sub.data: supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', USER_EMAIL).execute()
+                else: supabase.table('subscriptions').insert({'user_email': USER_EMAIL, 'expires_at': new_exp.isoformat()}).execute()
+                st.success(f"✅ 续费成功！"); st.rerun()
+            else: st.error("❌ 激活码无效")
         else: st.warning("请输入激活码")
 
 if st.sidebar.button("🚪 退出系统", use_container_width=True): st.session_state['user'] = None; st.rerun()
 
-# --- 拦截器：如果过期，锁住主界面但不锁侧边栏 ---
 if not IS_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
-    st.info("👉 请在左侧边栏的【💳 激活码充值 / 续费】处，输入新的激活码恢复您的所有数据和特权！")
+    st.info("👉 请联系管理员微信续费，或在左侧边栏输入新的激活码恢复您的特权！")
     st.stop()
 
 
 # ==========================================
+# 👑 模块：老板 CRM 管理后台 (全新重磅)
+# ==========================================
+if IS_ADMIN and page == "👑 老板管理后台":
+    st.title("👑 老板全能控制台")
+    
+    tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码账本"])
+    
+    # 1. 激活码生成
+    with tab_gen:
+        st.markdown("#### 🔨 生成新激活码")
+        with st.form("gen_code_form"):
+            plan = st.radio("授权时长：", ["7天试用", "1个月", "3个月", "1年", "终身"], horizontal=True)
+            days_map = {"7天试用": 7, "1个月": 30, "3个月": 90, "1年": 365, "终身": 36500}
+            if st.form_submit_button("🔨 立即生成", type="primary"):
+                new_code = f"VIP-{''.join(random.choices(string.ascii_uppercase + string.digits, k=8))}"
+                try:
+                    supabase.table('invitation_codes').insert({"code": new_code, "duration_days": days_map[plan], "is_used": False}).execute()
+                    st.success(f"生成成功: {new_code}"); st.code(new_code)
+                except: st.error("生成失败")
+
+    # 2. 用户CRM管理与一键续费
+    with tab_users:
+        st.markdown("#### 👥 客户关系管理")
+        try:
+            sub_data = supabase.table('subscriptions').select('*').execute().data
+            if sub_data:
+                df_subs = pd.DataFrame(sub_data)
+                
+                # 美化状态显示
+                now_dt = datetime.datetime.now()
+                df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
+                df_subs['状态'] = df_subs['到期时间'].apply(lambda x: "🔴 已过期" if x < now_dt else "🟢 正常")
+                
+                # 用户选择器
+                user_list = df_subs['user_email'].tolist()
+                selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", user_list)
+                
+                if selected_user:
+                    user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]
+                    curr_exp = user_info['到期时间']
+                    
+                    st.markdown(f"""
+                    <div style='background:#F4F6F1; padding:15px; border-radius:8px; border:1px solid #EAECEF; margin-bottom:15px;'>
+                        <b style='font-size:1.1em;'>客户：{selected_user}</b><br>
+                        当前状态：{user_info['状态']}<br>
+                        到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("##### ⚡ 老板特权：一键充值 (免密续费)")
+                    col_r1, col_r2, col_r3 = st.columns(3)
+                    add_days = 0
+                    if col_r1.button("💸 续费 30 天", use_container_width=True): add_days = 30
+                    if col_r2.button("💸 续费 90 天", use_container_width=True): add_days = 90
+                    if col_r3.button("💸 续费 365 天", use_container_width=True): add_days = 365
+                    
+                    if add_days > 0:
+                        base_date = curr_exp if curr_exp > now_dt else now_dt
+                        new_exp = base_date + datetime.timedelta(days=add_days)
+                        try:
+                            supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', selected_user).execute()
+                            st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。客户端刷新即可生效。")
+                        except Exception as e: st.error(f"续费失败: {e}")
+            else: st.info("当前还没有注册用户。")
+        except: st.error("加载用户数据失败。")
+
+    # 3. 激活码账本
+    with tab_codes:
+        st.markdown("#### 📋 激活码核销账本")
+        try:
+            codes_data = supabase.table('invitation_codes').select('*').execute().data
+            if codes_data:
+                df_codes = pd.DataFrame(codes_data)
+                df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
+                # 调整列顺序并展示
+                display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
+                display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
+                st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
+            else: st.info("还没有生成过激活码。")
+        except: pass
+
+# ==========================================
 # 📚 模块：公共教材图书馆
 # ==========================================
-if page == "📚 公共教材图书馆":
+elif page == "📚 公共教材图书馆":
     
     if IS_ADMIN:
         with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
@@ -297,21 +369,6 @@ if page == "📚 公共教材图书馆":
             else: st.info("该分类下暂无内容。")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
     except: pass
-
-# ==========================================
-# 👑 模块：老板发卡中心
-# ==========================================
-elif page == "👑 老板发卡中心":
-    st.title("👑 发卡中心")
-    with st.form("gen_code_form"):
-        plan = st.radio("授权时长：", ["1个月", "3个月", "1年", "终身"], horizontal=True)
-        days_map = {"1个月": 30, "3个月": 90, "1年": 365, "终身": 36500}
-        if st.form_submit_button("🔨 生成激活码", type="primary"):
-            new_code = f"VIP-{''.join(random.choices(string.ascii_uppercase + string.digits, k=8))}"
-            try:
-                supabase.table('invitation_codes').insert({"code": new_code, "duration_days": days_map[plan], "is_used": False}).execute()
-                st.success(f"生成成功: {new_code}"); st.code(new_code)
-            except: st.error("生成失败")
 
 # ==========================================
 # 🔍 模块：教研室
