@@ -22,6 +22,7 @@ DEEPSEEK_API_KEY = st.secrets["DEEPSEEK_API_KEY"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 ADMIN_EMAIL = "75736724@qq.com" # 👑 老板权限
+CONTACT_WECHAT = "你的微信号" # ⚠️ 这里可以改成你的真实微信号，方便客户续费
 
 llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -134,7 +135,6 @@ if st.session_state['user'] is None:
                     try:
                         supabase.auth.sign_up({"email": s_email, "password": s_pwd})
                         exp = (datetime.datetime.now() + datetime.timedelta(days=code_res.data[0]['duration_days'])).isoformat()
-                        # ⚠️ 核心升级：注册时，把使用者的邮箱死死绑定在这个邀请码上！
                         supabase.table('invitation_codes').update({'is_used': True, 'used_by': s_email}).eq('code', s_code).execute()
                         supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp}).execute()
                         st.success("注册成功！请切换登录。")
@@ -143,7 +143,7 @@ if st.session_state['user'] is None:
     st.stop()
 
 # ==========================================
-# 🛡️ 订阅状态拦截与智能续费系统
+# 🛡️ 订阅状态拦截系统
 # ==========================================
 USER_EMAIL = st.session_state['user'].email; IS_ADMIN = (USER_EMAIL == ADMIN_EMAIL); CURRENT_USER_ID = st.session_state['user'].id
 
@@ -172,34 +172,20 @@ if current_exp and not IS_ADMIN:
     status_icon = "🔴" if is_expired else "🟢"
     st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
 
-with st.sidebar.expander("💳 自助激活码续费"):
-    renew_code = st.text_input("激活码", placeholder="请输入新的激活码", label_visibility="collapsed")
-    if st.button("确认续费", use_container_width=True):
-        if renew_code:
-            code_res = supabase.table('invitation_codes').select('*').eq('code', renew_code).eq('is_used', False).execute()
-            if code_res.data:
-                duration = code_res.data[0]['duration_days']; now = datetime.datetime.now()
-                base_date = current_exp if (current_exp and current_exp > now) else now
-                new_exp = base_date + datetime.timedelta(days=duration)
-                # ⚠️ 核心升级：老客户自助续费时，也把他的邮箱绑定到这张新卡上
-                supabase.table('invitation_codes').update({'is_used': True, 'used_by': USER_EMAIL}).eq('code', renew_code).execute()
-                check_sub = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
-                if check_sub.data: supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', USER_EMAIL).execute()
-                else: supabase.table('subscriptions').insert({'user_email': USER_EMAIL, 'expires_at': new_exp.isoformat()}).execute()
-                st.success(f"✅ 续费成功！"); st.rerun()
-            else: st.error("❌ 激活码无效")
-        else: st.warning("请输入激活码")
+# ⚠️ 删除了原来的自助续费框，侧边栏现在极致干净
 
 if st.sidebar.button("🚪 退出系统", use_container_width=True): st.session_state['user'] = None; st.rerun()
 
+# --- 拦截器：账号过期引导私域续费 ---
 if not IS_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
-    st.info("👉 请联系管理员微信续费，或在左侧边栏输入新的激活码恢复您的特权！")
+    # 引导添加老板微信
+    st.info(f"👉 您的账号资料已安全锁定。请联系管理员微信 **{CONTACT_WECHAT}** 进行续费激活，解锁全部权限！")
     st.stop()
 
 
 # ==========================================
-# 👑 模块：老板 CRM 管理后台 (全维度监控版)
+# 👑 模块：老板 CRM 管理后台
 # ==========================================
 if IS_ADMIN and page == "👑 老板管理后台":
     st.title("👑 老板全能控制台")
@@ -264,7 +250,7 @@ if IS_ADMIN and page == "👑 老板管理后台":
             else: st.info("当前还没有注册用户。")
         except: st.error("加载用户数据失败。")
 
-    # 3. 激活码账本 (重磅：追踪使用者)
+    # 3. 激活码账本
     with tab_codes:
         st.markdown("#### 📋 激活码核销账本")
         try:
@@ -273,7 +259,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
                 df_codes = pd.DataFrame(codes_data)
                 df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
                 
-                # 兼容处理：检查库里是否加了 used_by 列
                 if 'used_by' in df_codes.columns:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'used_by', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']
@@ -282,7 +267,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
                     display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
                     
-                # 倒序排列，最新生成的排最上面
                 st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
             else: st.info("还没有生成过激活码。")
         except: pass
@@ -376,6 +360,7 @@ elif page == "📚 公共教材图书馆":
                                         st.success("✅ 解析完成！已保存至【档案馆-摘抄好句】")
                                         st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
                                     except: st.error("解析失败")
+
             else: st.info("该分类下暂无内容。")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
     except: pass
