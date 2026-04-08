@@ -134,7 +134,8 @@ if st.session_state['user'] is None:
                     try:
                         supabase.auth.sign_up({"email": s_email, "password": s_pwd})
                         exp = (datetime.datetime.now() + datetime.timedelta(days=code_res.data[0]['duration_days'])).isoformat()
-                        supabase.table('invitation_codes').update({'is_used': True}).eq('code', s_code).execute()
+                        # ⚠️ 核心升级：注册时，把使用者的邮箱死死绑定在这个邀请码上！
+                        supabase.table('invitation_codes').update({'is_used': True, 'used_by': s_email}).eq('code', s_code).execute()
                         supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp}).execute()
                         st.success("注册成功！请切换登录。")
                     except: st.error("注册失败，可能邮箱已被使用。")
@@ -180,7 +181,8 @@ with st.sidebar.expander("💳 自助激活码续费"):
                 duration = code_res.data[0]['duration_days']; now = datetime.datetime.now()
                 base_date = current_exp if (current_exp and current_exp > now) else now
                 new_exp = base_date + datetime.timedelta(days=duration)
-                supabase.table('invitation_codes').update({'is_used': True}).eq('code', renew_code).execute()
+                # ⚠️ 核心升级：老客户自助续费时，也把他的邮箱绑定到这张新卡上
+                supabase.table('invitation_codes').update({'is_used': True, 'used_by': USER_EMAIL}).eq('code', renew_code).execute()
                 check_sub = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
                 if check_sub.data: supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', USER_EMAIL).execute()
                 else: supabase.table('subscriptions').insert({'user_email': USER_EMAIL, 'expires_at': new_exp.isoformat()}).execute()
@@ -197,12 +199,12 @@ if not IS_ADMIN and is_expired:
 
 
 # ==========================================
-# 👑 模块：老板 CRM 管理后台 (全新重磅)
+# 👑 模块：老板 CRM 管理后台 (全维度监控版)
 # ==========================================
 if IS_ADMIN and page == "👑 老板管理后台":
     st.title("👑 老板全能控制台")
     
-    tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码账本"])
+    tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码查账明细"])
     
     # 1. 激活码生成
     with tab_gen:
@@ -224,13 +226,12 @@ if IS_ADMIN and page == "👑 老板管理后台":
             sub_data = supabase.table('subscriptions').select('*').execute().data
             if sub_data:
                 df_subs = pd.DataFrame(sub_data)
-                
-                # 美化状态显示
                 now_dt = datetime.datetime.now()
                 df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
                 df_subs['状态'] = df_subs['到期时间'].apply(lambda x: "🔴 已过期" if x < now_dt else "🟢 正常")
                 
-                # 用户选择器
+                st.metric("总注册用户数", len(df_subs))
+                
                 user_list = df_subs['user_email'].tolist()
                 selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", user_list)
                 
@@ -258,12 +259,12 @@ if IS_ADMIN and page == "👑 老板管理后台":
                         new_exp = base_date + datetime.timedelta(days=add_days)
                         try:
                             supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', selected_user).execute()
-                            st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。客户端刷新即可生效。")
+                            st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。")
                         except Exception as e: st.error(f"续费失败: {e}")
             else: st.info("当前还没有注册用户。")
         except: st.error("加载用户数据失败。")
 
-    # 3. 激活码账本
+    # 3. 激活码账本 (重磅：追踪使用者)
     with tab_codes:
         st.markdown("#### 📋 激活码核销账本")
         try:
@@ -271,12 +272,21 @@ if IS_ADMIN and page == "👑 老板管理后台":
             if codes_data:
                 df_codes = pd.DataFrame(codes_data)
                 df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
-                # 调整列顺序并展示
-                display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
-                display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
+                
+                # 兼容处理：检查库里是否加了 used_by 列
+                if 'used_by' in df_codes.columns:
+                    display_codes = df_codes[['code', 'duration_days', '状态', 'used_by', 'created_at']]
+                    display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']
+                    display_codes['使用者'] = display_codes['使用者'].fillna('-')
+                else:
+                    display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
+                    display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
+                    
+                # 倒序排列，最新生成的排最上面
                 st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
             else: st.info("还没有生成过激活码。")
         except: pass
+
 
 # ==========================================
 # 📚 模块：公共教材图书馆
