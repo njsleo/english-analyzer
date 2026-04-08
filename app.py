@@ -7,6 +7,8 @@ import datetime
 import random
 import string
 import re
+import hashlib
+import extra_streamlit_components as esc
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.oxml import parse_xml
@@ -22,10 +24,28 @@ DEEPSEEK_API_KEY = st.secrets["DEEPSEEK_API_KEY"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 ADMIN_EMAIL = "75736724@qq.com" # 👑 老板权限
-CONTACT_WECHAT = "你的微信号" # ⚠️ 这里可以改成你的真实微信号，方便客户续费
+CONTACT_WECHAT = "你的微信号" 
 
 llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ==========================================
+# 🍪 商业级加密 Cookie 记忆引擎
+# ==========================================
+@st.cache_resource
+def get_cookie_manager():
+    return esc.CookieManager()
+
+cookie_manager = get_cookie_manager()
+
+def get_secure_sign(email):
+    # 使用 SHA-256 防篡改加密，防止黑客伪造 Cookie
+    return hashlib.sha256(f"{email}{SUPABASE_KEY}".encode()).hexdigest()
+
+class SimpleUser:
+    def __init__(self, email, uid):
+        self.email = email
+        self.id = uid
 
 # ==========================================
 # 🎨 UI/UX 极致紧凑视觉系统
@@ -114,9 +134,20 @@ def format_reading_text(text):
     return cleaned.replace('§§§', '<br><br>')
 
 # ==========================================
-# 🔐 认证与登录系统
+# 🔐 认证与无感登录系统
 # ==========================================
 if 'user' not in st.session_state: st.session_state['user'] = None
+
+# 尝试从 Cookie 中无感恢复登录状态
+if st.session_state['user'] is None:
+    c_email = cookie_manager.get("saved_email")
+    c_uid = cookie_manager.get("saved_uid")
+    c_sign = cookie_manager.get("saved_sign")
+    
+    if c_email and c_uid and c_sign:
+        if c_sign == get_secure_sign(c_email):
+            st.session_state['user'] = SimpleUser(c_email, c_uid)
+
 if st.session_state['user'] is None:
     st.markdown("<h1 style='text-align: center; margin-top:50px;'>🏛️ 顶级英语精读工作台</h1>", unsafe_allow_html=True)
     _, col_auth, _ = st.columns([1, 1, 1])
@@ -125,7 +156,14 @@ if st.session_state['user'] is None:
         with tab_login:
             email = st.text_input("邮箱"); pwd = st.text_input("密码", type="password")
             if st.button("进入系统", use_container_width=True, type="primary"):
-                try: res = supabase.auth.sign_in_with_password({"email": email, "password": pwd}); st.session_state['user'] = res.user; st.rerun()
+                try: 
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": pwd})
+                    st.session_state['user'] = res.user
+                    # 登录成功，种下 30 天免登录 Cookie
+                    cookie_manager.set("saved_email", res.user.email, max_age=30*24*3600)
+                    cookie_manager.set("saved_uid", res.user.id, max_age=30*24*3600)
+                    cookie_manager.set("saved_sign", get_secure_sign(res.user.email), max_age=30*24*3600)
+                    st.rerun()
                 except: st.error("账号或密码有误")
         with tab_signup:
             s_email = st.text_input("设置邮箱"); s_pwd = st.text_input("设置密码(>6位)", type="password"); s_code = st.text_input("邀请码")
@@ -172,14 +210,16 @@ if current_exp and not IS_ADMIN:
     status_icon = "🔴" if is_expired else "🟢"
     st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
 
-# ⚠️ 删除了原来的自助续费框，侧边栏现在极致干净
+# 安全退出：不仅清空内存，还要删除 Cookie
+if st.sidebar.button("🚪 退出系统", use_container_width=True): 
+    cookie_manager.delete("saved_email")
+    cookie_manager.delete("saved_uid")
+    cookie_manager.delete("saved_sign")
+    st.session_state['user'] = None
+    st.rerun()
 
-if st.sidebar.button("🚪 退出系统", use_container_width=True): st.session_state['user'] = None; st.rerun()
-
-# --- 拦截器：账号过期引导私域续费 ---
 if not IS_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
-    # 引导添加老板微信
     st.info(f"👉 您的账号资料已安全锁定。请联系管理员微信 **{CONTACT_WECHAT}** 进行续费激活，解锁全部权限！")
     st.stop()
 
@@ -192,7 +232,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
     
     tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码查账明细"])
     
-    # 1. 激活码生成
     with tab_gen:
         st.markdown("#### 🔨 生成新激活码")
         with st.form("gen_code_form"):
@@ -205,7 +244,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
                     st.success(f"生成成功: {new_code}"); st.code(new_code)
                 except: st.error("生成失败")
 
-    # 2. 用户CRM管理与一键续费
     with tab_users:
         st.markdown("#### 👥 客户关系管理")
         try:
@@ -250,7 +288,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
             else: st.info("当前还没有注册用户。")
         except: st.error("加载用户数据失败。")
 
-    # 3. 激活码账本
     with tab_codes:
         st.markdown("#### 📋 激活码核销账本")
         try:
@@ -258,7 +295,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
             if codes_data:
                 df_codes = pd.DataFrame(codes_data)
                 df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
-                
                 if 'used_by' in df_codes.columns:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'used_by', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']
@@ -266,7 +302,6 @@ if IS_ADMIN and page == "👑 老板管理后台":
                 else:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
-                    
                 st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
             else: st.info("还没有生成过激活码。")
         except: pass
@@ -320,11 +355,6 @@ elif page == "📚 公共教材图书馆":
                         {clean_html_text}
                     </div>
                     """, unsafe_allow_html=True)
-                    st.write("")
-                    if st.button("🚀 将全篇发送至【教研室】深度解析", use_container_width=True):
-                        st.session_state['temp_text'] = selected_item.get('content')
-                        st.session_state['nav_page'] = "🔍 智能精读教研室"
-                        st.rerun()
 
                 with col_tools:
                     st.markdown("#### 🛠️ 伴读助手")
@@ -360,7 +390,6 @@ elif page == "📚 公共教材图书馆":
                                         st.success("✅ 解析完成！已保存至【档案馆-摘抄好句】")
                                         st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
                                     except: st.error("解析失败")
-
             else: st.info("该分类下暂无内容。")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
     except: pass

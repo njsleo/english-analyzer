@@ -6,3 +6,4 @@ pandas
 python-docx
 pypdf
 python-docx
+extra-streamlit-components
