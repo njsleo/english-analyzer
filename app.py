@@ -30,13 +30,10 @@ llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================================
-# 🍪 商业级加密 Cookie 记忆引擎
+# 🍪 商业级加密 Cookie 记忆引擎 (⚠️ 已修复黄框警告)
 # ==========================================
-@st.cache_resource
-def get_cookie_manager():
-    return esc.CookieManager()
-
-cookie_manager = get_cookie_manager()
+# 彻底去除了 @st.cache_resource，直接实例化即可完美运行且无警告
+cookie_manager = esc.CookieManager()
 
 def get_secure_sign(email):
     # 使用 SHA-256 防篡改加密，防止黑客伪造 Cookie
