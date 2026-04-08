@@ -35,7 +35,7 @@ custom_css = """
 <style>
     .stApp { background-color: #FAFAFC; }
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
-    section[data-testid="stSidebar"] { min-width: 200px !important; max-width: 200px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
+    section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 10px !important; border-radius: 6px !important; margin: 0 !important; border: none !important; cursor: pointer; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #8892B0 !important; font-size: 0.85em !important; }
@@ -46,8 +46,6 @@ custom_css = """
     .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #E0E4E8 !important; }
     div[data-baseweb="tab-list"] { gap: 10px; }
     div[data-baseweb="tab"] { padding: 8px 12px !important; font-size: 0.9em !important; }
-    
-    /* 图书馆左侧目录样式优化 */
     .toc-radio div[role="radiogroup"] > label { padding: 8px 10px !important; background: transparent !important; border: none !important; border-radius: 4px; transition: all 0.2s; }
     .toc-radio div[role="radiogroup"] > label:hover { background-color: #EAECEF !important; }
     .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #E2E6EA !important; border-left: 3px solid #1F4E79 !important; }
@@ -110,16 +108,12 @@ def extract_text_from_file(uploaded_file):
     return ""
 
 def format_reading_text(text):
-    """智能文本清洗：去除PDF异常换行，保留真实段落换行"""
-    # 将真实的双回车（段落）替换为占位符
     cleaned = text.replace('\r\n', '\n').replace('\n\n', '§§§')
-    # 将多余的单回车替换为空格（拼接断句）
     cleaned = cleaned.replace('\n', ' ')
-    # 将占位符替换回 HTML 的双换行符
     return cleaned.replace('§§§', '<br><br>')
 
 # ==========================================
-# 🔐 认证系统与智能侧边栏
+# 🔐 认证与登录系统
 # ==========================================
 if 'user' not in st.session_state: st.session_state['user'] = None
 if st.session_state['user'] is None:
@@ -143,12 +137,26 @@ if st.session_state['user'] is None:
                         supabase.table('invitation_codes').update({'is_used': True}).eq('code', s_code).execute()
                         supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp}).execute()
                         st.success("注册成功！请切换登录。")
-                    except: st.error("注册失败")
-                else: st.error("邀请码无效")
+                    except: st.error("注册失败，可能邮箱已被使用。")
+                else: st.error("邀请码无效或已使用")
     st.stop()
 
+# ==========================================
+# 🛡️ 订阅状态拦截与智能续费系统
+# ==========================================
 USER_EMAIL = st.session_state['user'].email; IS_ADMIN = (USER_EMAIL == ADMIN_EMAIL); CURRENT_USER_ID = st.session_state['user'].id
 
+current_exp = None
+is_expired = False
+if not IS_ADMIN:
+    sub_res = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
+    if sub_res.data:
+        current_exp = datetime.datetime.fromisoformat(sub_res.data[0]['expires_at'])
+        if datetime.datetime.now() > current_exp: is_expired = True
+    else:
+        is_expired = True
+
+# --- 侧边栏渲染 (包含导航和充值接口) ---
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词汇分级记忆库"]
 if IS_ADMIN: menu_options.append("👑 老板发卡中心")
@@ -157,12 +165,49 @@ st.sidebar.markdown("## 🏛️ 工作台")
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
 page = st.sidebar.radio("导航", menu_options, index=default_idx, label_visibility="collapsed")
 st.session_state['nav_page'] = page 
+
 st.sidebar.markdown("---")
 st.sidebar.caption(f"👤 {USER_EMAIL}")
+if current_exp and not IS_ADMIN:
+    status_icon = "🔴" if is_expired else "🟢"
+    st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
+
+# 💳 续费充值模块 (老板和用户都可以用)
+with st.sidebar.expander("💳 激活码充值 / 续费"):
+    renew_code = st.text_input("激活码", placeholder="请输入新的激活码", label_visibility="collapsed")
+    if st.button("确认续费", use_container_width=True, type="primary"):
+        if renew_code:
+            code_res = supabase.table('invitation_codes').select('*').eq('code', renew_code).eq('is_used', False).execute()
+            if code_res.data:
+                duration = code_res.data[0]['duration_days']
+                now = datetime.datetime.now()
+                # 核心逻辑：如果没过期，在原来基础上累加；如果过期了，从今天开始算
+                base_date = current_exp if (current_exp and current_exp > now) else now
+                new_exp = base_date + datetime.timedelta(days=duration)
+                
+                # 销毁激活码并更新期限
+                supabase.table('invitation_codes').update({'is_used': True}).eq('code', renew_code).execute()
+                check_sub = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
+                if check_sub.data:
+                    supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', USER_EMAIL).execute()
+                else:
+                    supabase.table('subscriptions').insert({'user_email': USER_EMAIL, 'expires_at': new_exp.isoformat()}).execute()
+                st.success(f"✅ 续费成功！增加了 {duration} 天VIP。")
+                st.rerun()
+            else: st.error("❌ 激活码无效或已被使用")
+        else: st.warning("请输入激活码")
+
 if st.sidebar.button("🚪 退出系统", use_container_width=True): st.session_state['user'] = None; st.rerun()
 
+# --- 拦截器：如果过期，锁住主界面但不锁侧边栏 ---
+if not IS_ADMIN and is_expired:
+    st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
+    st.info("👉 请在左侧边栏的【💳 激活码充值 / 续费】处，输入新的激活码恢复您的所有数据和特权！")
+    st.stop()
+
+
 # ==========================================
-# 📚 模块：公共教材图书馆 (三栏式黄金阅读排版)
+# 📚 模块：公共教材图书馆
 # ==========================================
 if page == "📚 公共教材图书馆":
     
@@ -192,11 +237,7 @@ if page == "📚 公共教材图书馆":
             
             if filtered_lib:
                 st.divider()
-                
-                # 🎯 核心魔法：三栏式排版 [1: 2.5: 1.2]
                 col_toc, col_read, col_tools = st.columns([1, 2.5, 1.2], gap="medium")
-                
-                # --- 左侧：目录区 ---
                 with col_toc:
                     st.markdown("##### 📑 目录")
                     st.markdown("<div class='toc-radio'>", unsafe_allow_html=True)
@@ -205,27 +246,20 @@ if page == "📚 公共教材图书馆":
                     st.markdown("</div>", unsafe_allow_html=True)
                     selected_item = filtered_lib[options.index(selected_title)]
                 
-                # --- 中间：沉浸阅读区 (护眼色 + 修复换行) ---
                 with col_read:
                     st.markdown(f"#### {selected_item.get('title')}")
-                    
-                    # 经过智能清洗后的文本
                     clean_html_text = format_reading_text(selected_item.get('content', ''))
-                    
-                    # 豆沙绿护眼色，行间距收紧到 1.6，两端对齐
                     st.markdown(f"""
                     <div style='background-color: #F3F6F0; padding: 25px 30px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.6; text-align: justify; height: 600px; overflow-y: auto; border: 1px solid #EAECEF; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);'>
                         {clean_html_text}
                     </div>
                     """, unsafe_allow_html=True)
-                    
                     st.write("")
                     if st.button("🚀 将全篇发送至【教研室】深度解析", use_container_width=True):
                         st.session_state['temp_text'] = selected_item.get('content')
                         st.session_state['nav_page'] = "🔍 智能精读教研室"
                         st.rerun()
 
-                # --- 右侧：AI 伴读工具箱 ---
                 with col_tools:
                     st.markdown("#### 🛠️ 伴读助手")
                     tab_dict, tab_clip = st.tabs(["🔍 查词", "📝 摘抄"])
@@ -260,7 +294,6 @@ if page == "📚 公共教材图书馆":
                                         st.success("✅ 解析完成！已保存至【档案馆-摘抄好句】")
                                         st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
                                     except: st.error("解析失败")
-
             else: st.info("该分类下暂无内容。")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
     except: pass
