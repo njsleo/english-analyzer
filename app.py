@@ -455,14 +455,13 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词库与大纲 (🌟 表格管理模式双轨制)
+# 🔠 模块：词库与大纲
 # ==========================================
 elif page == "🔠 词库与大纲":
     st.title("🔠 词汇生态系统")
     
     tab_mine, tab_public = st.tabs(["📓 我的私人生词本", "🌍 公共大纲词库"])
     
-    # ---------------- 频道 1：我的生词本 ----------------
     with tab_mine:
         try:
             vocab_data = supabase.table('vocabulary').select('*').eq('user_id', CURRENT_USER_ID).execute().data
@@ -473,7 +472,6 @@ elif page == "🔠 词库与大纲":
                 with col_m1: st.metric("生词量", len(df_vocab))
                 with col_m2: 
                     st.write("")
-                    # 🌟 核心开关：切换沉浸护眼模式 / 表格批量打钩管理模式
                     manage_mode = st.toggle("🛠️ 开启表格打钩/批量管理模式")
                 
                 if manage_mode:
@@ -493,11 +491,25 @@ elif page == "🔠 词库与大纲":
                     st.write("---")
                     c1, c2, c3 = st.columns(3)
                     
-                    csv_all = df_vocab.to_csv(index=False).encode('utf-8-sig')
+                    # 🌟 核心修复：纯净版导出，剔除内部数据，翻译表头为纯中文！
+                    export_cols_map = {
+                        'word': '单词', 
+                        'phonetic': '音标', 
+                        'translation': '释义', 
+                        'tags': '级别', 
+                        'memory_tip': '记忆法', 
+                        'usage_examples': '例句'
+                    }
+                    
+                    # 导出全部时，只提取需要的列并重命名
+                    df_export_all = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].rename(columns=export_cols_map)
+                    csv_all = df_export_all.to_csv(index=False).encode('utf-8-sig')
                     c1.download_button("📥 导出【全部】单词", csv_all, "全部生词本.csv", "text/csv", use_container_width=True)
                     
                     if not selected_df.empty:
-                        csv_sel = selected_df.drop(columns=['☑️ 勾选']).to_csv(index=False).encode('utf-8-sig')
+                        # 导出选中时，丢掉打钩列并重命名
+                        df_export_sel = selected_df.drop(columns=['☑️ 勾选']).rename(columns=export_cols_map)
+                        csv_sel = df_export_sel.to_csv(index=False).encode('utf-8-sig')
                         c2.download_button(f"📥 导出选中的 {len(selected_df)} 个", csv_sel, "选中生词.csv", "text/csv", use_container_width=True)
                         
                         if c3.button(f"🗑️ 删除选中的 {len(selected_df)} 个", type="primary", use_container_width=True):
@@ -509,7 +521,6 @@ elif page == "🔠 词库与大纲":
                         c3.button("🗑️ 删除选中的 (请先打钩)", disabled=True, use_container_width=True)
 
                 else:
-                    # 原本带发音的极致护眼 HTML 表格
                     tag_filter = st.selectbox("🎓 分类筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
                     display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
                     
@@ -524,7 +535,6 @@ elif page == "🔠 词库与大纲":
             else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
         except Exception as e: pass
 
-    # ---------------- 频道 2：公共大纲词库 ----------------
     with tab_public:
         if IS_ADMIN:
             with st.expander("👑 馆长专属：用 AI 批量生成公共词库", expanded=False):
