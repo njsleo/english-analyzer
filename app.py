@@ -43,7 +43,7 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致双层护眼视觉系统 (重磅升级配色)
+# 🎨 UI/UX 极致双层护眼视觉系统 (字号与表格美化)
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
@@ -63,21 +63,28 @@ custom_css = """
         height: 0 !important;
     }
     .stHeadingContainer {
-        margin-top: -2rem !important;
+        margin-top: -1.5rem !important;
     }
+    
+    /* 🌟 核心优化：标题字号全面瘦身，更加精致 */
     h1 {
+        font-size: 1.8rem !important; 
         margin-top: -1rem !important;
-        padding-top: 0 !important;
+        padding-bottom: 15px !important;
     }
+    h2 { font-size: 1.4rem !important; }
+    h3 { font-size: 1.2rem !important; }
+    h4 { font-size: 1.1rem !important; }
+    h5 { font-size: 1.05rem !important; }
 
-    /* 2. 🌟 全局大背景：柔和的抹茶豆沙绿，吸收所有刺眼光线 */
+    /* 2. 全局大背景：柔和的抹茶豆沙绿 */
     .stApp { 
         background-color: #EBF0E5 !important; 
     }
 
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     
-    /* 侧边栏保持深色，提供高级的对比度 */
+    /* 侧边栏 */
     section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 10px !important; border-radius: 6px !important; margin: 0 !important; border: none !important; cursor: pointer; }
@@ -89,7 +96,7 @@ custom_css = """
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     
-    /* 🌟 输入框也融入护眼纸张色 */
+    /* 输入框护眼色 */
     .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
     
     /* 顶部图书分类标签 */
@@ -371,7 +378,6 @@ elif page == "📚 公共教材图书馆":
                         with col_read:
                             st.markdown(f"#### {selected_item.get('title')}")
                             clean_html_text = format_reading_text(selected_item.get('content', ''))
-                            # 🌟 核心：温润羊皮纸护眼阅读区
                             paper_bg = "#F5F7EC" 
                             st.markdown(f"""
                             <div style='background-color: {paper_bg}; padding: 30px 40px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 650px; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
@@ -498,13 +504,51 @@ elif page == "🗂️ 文章分类档案馆":
         else: st.info("空空如也。")
     except: pass
 
+# ==========================================
+# 🔠 模块：词汇分级记忆库 (🌟 深度护眼定制表格)
+# ==========================================
 elif page == "🔠 词汇分级记忆库":
     st.title("🔠 私人词汇库")
     try:
         vocab_data = supabase.table('vocabulary').select('*').eq('user_id', CURRENT_USER_ID).execute().data
         if vocab_data:
-            df_vocab = pd.DataFrame(vocab_data); tag_filter = st.selectbox("🎓 筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
+            df_vocab = pd.DataFrame(vocab_data)
+            tag_filter = st.selectbox("🎓 筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
             display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
-            st.metric("生词量", len(display_df)); st.dataframe(display_df[['word', 'phonetic', 'translation', 'tags', 'memory_tip']], use_container_width=True)
-        else: st.info("无词汇。")
-    except: pass
+            
+            st.metric("生词量", len(display_df))
+            
+            # 🌟 核心：抛弃刺眼默认表格，构建护眼沉浸式 HTML 数据表
+            html_table = f"""
+            <div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
+                <table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: "Times New Roman", "等线", serif;'>
+                    <thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'>
+                        <tr>
+                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>单词</th>
+                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>音标</th>
+                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>释义</th>
+                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>级别</th>
+                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>记忆法</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+            for _, row in display_df.iterrows():
+                html_table += f"""
+                        <tr style='border-bottom: 1px solid #EAECEF;'>
+                            <td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td>
+                            <td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}</td>
+                            <td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td>
+                            <td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td>
+                            <td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td>
+                        </tr>
+                """
+            html_table += """
+                    </tbody>
+                </table>
+            </div>
+            """
+            st.markdown(html_table, unsafe_allow_html=True)
+            
+        else: st.info("词汇库还是空的，快去阅读文章添加生词吧！")
+    except Exception as e: pass
