@@ -25,7 +25,7 @@ from openpyxl.styles import PatternFill, Font, Alignment
 DEEPSEEK_API_KEY = st.secrets["DEEPSEEK_API_KEY"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-ADMIN_EMAIL = "75736724@qq.com" # 👑 老板权限
+ADMIN_EMAIL = "75736724@qq.com" # 最高权限创始人
 CONTACT_WECHAT = "你的微信号" 
 
 llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
@@ -75,7 +75,7 @@ custom_css = """
     
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
+    .stTextInput input, .stTextArea textarea, .stSelectbox > div > div { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
     
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
     div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.95em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
@@ -151,47 +151,33 @@ def format_reading_text(text):
     cleaned = cleaned.replace('\n', ' ')
     return cleaned.replace('§§§', '<br><br>')
 
-# 🌟 新增：高级护眼 Excel 渲染引擎
 def export_styled_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='我的生词本')
         worksheet = writer.sheets['我的生词本']
-
-        # 定义护眼色与样式
-        header_fill = PatternFill(start_color="D3DCCB", end_color="D3DCCB", fill_type="solid") # 表头深绿
-        row_fill = PatternFill(start_color="F5F7EC", end_color="F5F7EC", fill_type="solid")     # 数据行浅绿
+        header_fill = PatternFill(start_color="D3DCCB", end_color="D3DCCB", fill_type="solid")
+        row_fill = PatternFill(start_color="F5F7EC", end_color="F5F7EC", fill_type="solid")
         header_font = Font(name="等线", bold=True, color="1F4E79", size=12)
         base_font = Font(name="等线", size=11, color="2C3E50")
-        
-        # 定义对齐方式（全部居中垂直，部分文字自动换行）
         align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
         align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-        # 1. 渲染表头
-        worksheet.row_dimensions[1].height = 30 # 表头行高
+        worksheet.row_dimensions[1].height = 30
         for col_num, value in enumerate(df.columns.values):
             cell = worksheet.cell(row=1, column=col_num + 1)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = align_center
+            cell.fill = header_fill; cell.font = header_font; cell.alignment = align_center
 
-        # 2. 渲染数据行与设置行高
         for row_num in range(2, len(df) + 2):
-            worksheet.row_dimensions[row_num].height = 40 # 舒展的行高
+            worksheet.row_dimensions[row_num].height = 40
             for col_num in range(1, len(df.columns) + 1):
                 cell = worksheet.cell(row=row_num, column=col_num)
-                cell.fill = row_fill
-                cell.font = base_font
-                # 单词、音标、级别居中，释义、记忆法、例句靠左
+                cell.fill = row_fill; cell.font = base_font
                 if col_num in [1, 2, 4]: cell.alignment = align_center
                 else: cell.alignment = align_left
 
-        # 3. 精准控制每一列的宽度
         col_widths = {'A': 16, 'B': 18, 'C': 35, 'D': 10, 'E': 45, 'F': 60}
-        for col, width in col_widths.items():
-            worksheet.column_dimensions[col].width = width
-
+        for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
 # ==========================================
@@ -231,30 +217,37 @@ if st.session_state['user'] is None:
                         supabase.auth.sign_up({"email": s_email, "password": s_pwd})
                         exp = (datetime.datetime.now() + datetime.timedelta(days=code_res.data[0]['duration_days'])).isoformat()
                         supabase.table('invitation_codes').update({'is_used': True, 'used_by': s_email}).eq('code', s_code).execute()
-                        supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp}).execute()
+                        # 默认注册为 user 权限
+                        supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp, 'role': 'user'}).execute()
                         st.success("注册成功！请切换登录。")
                     except: st.error("注册失败，可能邮箱已被使用。")
                 else: st.error("邀请码无效或已使用")
     st.stop()
 
 # ==========================================
-# 🛡️ 订阅状态拦截系统
+# 🛡️ 订阅与 RBAC 权限系统
 # ==========================================
-USER_EMAIL = st.session_state['user'].email; IS_ADMIN = (USER_EMAIL == ADMIN_EMAIL); CURRENT_USER_ID = st.session_state['user'].id
+USER_EMAIL = st.session_state['user'].email; CURRENT_USER_ID = st.session_state['user'].id
+IS_SUPER_ADMIN = (USER_EMAIL == ADMIN_EMAIL) # 最高创始人权限
 
 current_exp = None
 is_expired = False
-if not IS_ADMIN:
-    sub_res = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
-    if sub_res.data:
-        current_exp = datetime.datetime.fromisoformat(sub_res.data[0]['expires_at'])
-        if datetime.datetime.now() > current_exp: is_expired = True
-    else:
-        is_expired = True
+user_role = "user" # 默认权限
+
+sub_res = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
+if sub_res.data:
+    current_exp = datetime.datetime.fromisoformat(sub_res.data[0]['expires_at'])
+    if datetime.datetime.now() > current_exp and not IS_SUPER_ADMIN: is_expired = True
+    user_role = sub_res.data[0].get('role', 'user')
+else:
+    if not IS_SUPER_ADMIN: is_expired = True
+
+# 🌟 判断是否为“泛管理员” (包括最高创始人和被授权的老师)
+IS_ADMIN = IS_SUPER_ADMIN or (user_role == 'admin')
 
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
-if IS_ADMIN: menu_options.append("👑 老板管理后台")
+if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") # 只有大老板能发卡和充值
 
 st.sidebar.markdown("## 🏛️ 工作台")
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
@@ -262,8 +255,9 @@ page = st.sidebar.radio("导航", menu_options, index=default_idx, label_visibil
 st.session_state['nav_page'] = page 
 
 st.sidebar.markdown("---")
-st.sidebar.caption(f"👤 {USER_EMAIL}")
-if current_exp and not IS_ADMIN:
+role_badge = "👑 馆长" if IS_ADMIN else "👤 用户"
+st.sidebar.caption(f"{role_badge} | {USER_EMAIL}")
+if current_exp and not IS_SUPER_ADMIN:
     status_icon = "🔴" if is_expired else "🟢"
     st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
 
@@ -271,17 +265,19 @@ if st.sidebar.button("🚪 退出系统", use_container_width=True):
     cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
     st.session_state['user'] = None; st.rerun()
 
-if not IS_ADMIN and is_expired:
+if not IS_SUPER_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
     st.info(f"👉 您的账号资料已安全锁定。请联系管理员微信 **{CONTACT_WECHAT}** 进行续费激活，解锁全部权限！")
     st.stop()
 
+
 # ==========================================
-# 👑 模块：老板 CRM 管理后台
+# 👑 模块：创始人控制台 (超级管理员专属)
 # ==========================================
-if IS_ADMIN and page == "👑 老板管理后台":
-    st.title("👑 老板全能控制台")
-    tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码查账明细"])
+if IS_SUPER_ADMIN and page == "👑 创始人控制台":
+    st.title("👑 创始人全能控制台")
+    tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 授权", "📋 激活码查账明细"])
+    
     with tab_gen:
         st.markdown("#### 🔨 生成新激活码")
         with st.form("gen_code_form"):
@@ -293,8 +289,9 @@ if IS_ADMIN and page == "👑 老板管理后台":
                     supabase.table('invitation_codes').insert({"code": new_code, "duration_days": days_map[plan], "is_used": False}).execute()
                     st.success(f"生成成功: {new_code}"); st.code(new_code)
                 except: st.error("生成失败")
+
     with tab_users:
-        st.markdown("#### 👥 客户关系管理")
+        st.markdown("#### 👥 客户管理 & 权限分配")
         try:
             sub_data = supabase.table('subscriptions').select('*').execute().data
             if sub_data:
@@ -302,23 +299,38 @@ if IS_ADMIN and page == "👑 老板管理后台":
                 df_subs['状态'] = df_subs['到期时间'].apply(lambda x: "🔴 已过期" if x < now_dt else "🟢 正常")
                 st.metric("总注册用户数", len(df_subs))
                 selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", df_subs['user_email'].tolist())
+                
                 if selected_user:
                     user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]; curr_exp = user_info['到期时间']
-                    st.markdown(f"<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'><b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>", unsafe_allow_html=True)
-                    st.markdown("##### ⚡ 老板特权：一键充值 (免密续费)")
-                    col_r1, col_r2, col_r3 = st.columns(3); add_days = 0
-                    if col_r1.button("💸 续费 30 天", use_container_width=True): add_days = 30
-                    if col_r2.button("💸 续费 90 天", use_container_width=True): add_days = 90
-                    if col_r3.button("💸 续费 365 天", use_container_width=True): add_days = 365
-                    if add_days > 0:
-                        base_date = curr_exp if curr_exp > now_dt else now_dt
-                        new_exp = base_date + datetime.timedelta(days=add_days)
-                        try:
-                            supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', selected_user).execute()
-                            st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。")
-                        except: st.error("续费失败")
+                    curr_role = user_info.get('role', 'user')
+                    st.markdown(f"<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'><b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>系统角色：{curr_role}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>", unsafe_allow_html=True)
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown("##### ⚡ 一键充值 (免密续费)")
+                        col_r1, col_r2 = st.columns(2); add_days = 0
+                        if col_r1.button("💸 续费 30 天", use_container_width=True): add_days = 30
+                        if col_r2.button("💸 续费 365 天", use_container_width=True): add_days = 365
+                        if add_days > 0:
+                            base_date = curr_exp if curr_exp > now_dt else now_dt
+                            new_exp = base_date + datetime.timedelta(days=add_days)
+                            try:
+                                supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', selected_user).execute()
+                                st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。"); st.rerun()
+                            except: st.error("续费失败")
+                    with c2:
+                        st.markdown("##### 🛡️ 系统角色授权")
+                        if curr_role == 'user':
+                            if st.button("👑 提拔为【内容管理员】", type="primary", use_container_width=True):
+                                supabase.table('subscriptions').update({'role': 'admin'}).eq('user_email', selected_user).execute()
+                                st.success(f"✅ 已将 {selected_user} 设为管理员！"); st.rerun()
+                        else:
+                            if st.button("⬇️ 降级为【普通用户】", use_container_width=True):
+                                supabase.table('subscriptions').update({'role': 'user'}).eq('user_email', selected_user).execute()
+                                st.success(f"✅ 已取消 {selected_user} 的管理员权限！"); st.rerun()
             else: st.info("当前还没有注册用户。")
         except: pass
+        
     with tab_codes:
         st.markdown("#### 📋 激活码核销账本")
         try:
@@ -335,10 +347,12 @@ if IS_ADMIN and page == "👑 老板管理后台":
         except: pass
 
 # ==========================================
-# 📚 模块：公共教材图书馆
+# 📚 模块：公共教材图书馆 (支持多管理员)
 # ==========================================
 elif page == "📚 公共教材图书馆":
     base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
+    
+    # 🌟 权限控制：只要是 Admin（老板或被授权老师）都能上传
     if IS_ADMIN:
         with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
             lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
@@ -499,7 +513,7 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词库与大纲 (🌟 原生 Excel 导出引擎)
+# 🔠 模块：词库与大纲 (🌟 支持多管理员本地传词库)
 # ==========================================
 elif page == "🔠 词库与大纲":
     st.title("🔠 词汇生态系统")
@@ -544,7 +558,6 @@ elif page == "🔠 词库与大纲":
                         'usage_examples': '例句'
                     }
                     
-                    # 🌟 核心：使用原生 Excel 渲染引擎导出，彻底抛弃 CSV
                     df_export_all = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].rename(columns=export_cols_map)
                     excel_all = export_styled_excel(df_export_all)
                     c1.download_button("📥 导出【全部】生词本", excel_all, "我的全部生词本.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
@@ -578,12 +591,23 @@ elif page == "🔠 词库与大纲":
         except Exception as e: pass
 
     with tab_public:
+        # 🌟 权限控制：只要是 Admin 就能上传词库
         if IS_ADMIN:
             with st.expander("👑 馆长专属：用 AI 批量生成公共词库", expanded=False):
-                st.info("💡 你只需要输入一堆单词，AI会自动帮你补齐音标、释义、例句并上架！（建议每次输入 30-50 个单词）")
+                st.info("💡 录入方式升级：支持直接粘贴单词，或上传含有单词的纯文本文件(txt/docx)！AI会自动解析并上架。")
                 v_title = st.text_input("词库书名 (例如: 中考必背词汇 1-50)")
                 v_level = st.selectbox("适用级别", ["小学", "初中", "高中", "大学四六级", "雅思托福", "其他"])
-                v_raw = st.text_area("粘贴你要上架的单词 (用逗号或空格隔开即可)", height=100)
+                
+                # 🌟 新增：本地文件上传传词模式
+                upload_method_v = st.radio("单词录入方式", ["手动粘贴词表", "📂 上传本地单词文档 (txt/docx)"], horizontal=True)
+                v_raw = ""
+                if upload_method_v == "手动粘贴词表":
+                    v_raw = st.text_area("粘贴你要上架的纯英文单词 (用逗号或换行隔开)", height=100)
+                else:
+                    uploaded_file_v = st.file_uploader("选择仅包含单词的文档", type=["txt", "docx"])
+                    if uploaded_file_v:
+                        v_raw = extract_text_from_file(uploaded_file_v)
+                        st.success(f"✅ 成功提取了 {len(v_raw.split())} 个字符段！")
                 
                 if st.button("🤖 AI 一键解析并发布", type="primary"):
                     if v_title and v_raw.strip():
@@ -595,7 +619,7 @@ elif page == "🔠 词库与大纲":
                                 supabase.table('public_library').insert({"title": v_title, "category": "公共词库", "content": parsed_json}).execute()
                                 st.success("✅ 词库发布成功！全员可见。"); st.rerun()
                             except Exception as e: st.error("解析失败，请减少单词数量重试。")
-                    else: st.warning("请填写名称和单词。")
+                    else: st.warning("请填写名称和录入单词。")
 
         try:
             pub_vocab_raw = supabase.table('public_library').select('*').eq('category', '公共词库').execute().data
