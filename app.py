@@ -30,13 +30,11 @@ llm_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==========================================
-# 🍪 商业级加密 Cookie 记忆引擎 (⚠️ 已修复黄框警告)
+# 🍪 商业级加密 Cookie 记忆引擎 
 # ==========================================
-# 彻底去除了 @st.cache_resource，直接实例化即可完美运行且无警告
 cookie_manager = esc.CookieManager()
 
 def get_secure_sign(email):
-    # 使用 SHA-256 防篡改加密，防止黑客伪造 Cookie
     return hashlib.sha256(f"{email}{SUPABASE_KEY}".encode()).hexdigest()
 
 class SimpleUser:
@@ -45,28 +43,50 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致紧凑视觉系统
+# 🎨 UI/UX 沉浸式全局护眼视觉系统
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
 custom_css = """
 <style>
-    .stApp { background-color: #FAFAFC; }
+    /* 1. 消除顶部巨大留白，让页面整体上移 */
+    [data-testid="stAppViewBlockContainer"] {
+        padding-top: 2rem !important; 
+        padding-bottom: 2rem !important;
+    }
+    [data-testid="stHeader"] {
+        background-color: transparent !important;
+    }
+    h1 {
+        margin-top: -20px !important;
+        padding-bottom: 10px !important;
+    }
+
+    /* 2. 全局沉浸式护眼底色 (消除刺眼的高反差白边) */
+    .stApp { 
+        background-color: #F0F3EC !important; /* 淡淡的抹茶/豆沙绿大背景 */
+    }
+
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
+    
     section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 10px !important; border-radius: 6px !important; margin: 0 !important; border: none !important; cursor: pointer; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #8892B0 !important; font-size: 0.85em !important; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] { background-color: #1a1e2a !important; border-left: 3px solid #00B4D8 !important; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
+    
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #E0E4E8 !important; }
+    .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #DFE3DB !important; background-color: #F8FAF5 !important; }
     div[data-baseweb="tab-list"] { gap: 10px; }
     div[data-baseweb="tab"] { padding: 8px 12px !important; font-size: 0.9em !important; }
-    .toc-radio div[role="radiogroup"] > label { padding: 8px 10px !important; background: transparent !important; border: none !important; border-radius: 4px; transition: all 0.2s; }
-    .toc-radio div[role="radiogroup"] > label:hover { background-color: #EAECEF !important; }
-    .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #E2E6EA !important; border-left: 3px solid #1F4E79 !important; }
+    
+    /* 左侧目录极致压缩优化 */
+    .toc-radio div[role="radiogroup"] > label { padding: 6px 8px !important; background: transparent !important; border: none !important; border-radius: 4px; transition: all 0.2s; }
+    .toc-radio div[role="radiogroup"] > label p { font-size: 0.8em !important; }
+    .toc-radio div[role="radiogroup"] > label:hover { background-color: #E2E8DD !important; }
+    .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #D8E0D1 !important; border-left: 3px solid #3A5F40 !important; }
     .toc-radio div[role="radiogroup"] > label[data-checked="true"] p { font-weight: bold !important; color: #111 !important;}
 </style>
 """
@@ -135,15 +155,12 @@ def format_reading_text(text):
 # ==========================================
 if 'user' not in st.session_state: st.session_state['user'] = None
 
-# 尝试从 Cookie 中无感恢复登录状态
 if st.session_state['user'] is None:
     c_email = cookie_manager.get("saved_email")
     c_uid = cookie_manager.get("saved_uid")
     c_sign = cookie_manager.get("saved_sign")
-    
     if c_email and c_uid and c_sign:
-        if c_sign == get_secure_sign(c_email):
-            st.session_state['user'] = SimpleUser(c_email, c_uid)
+        if c_sign == get_secure_sign(c_email): st.session_state['user'] = SimpleUser(c_email, c_uid)
 
 if st.session_state['user'] is None:
     st.markdown("<h1 style='text-align: center; margin-top:50px;'>🏛️ 顶级英语精读工作台</h1>", unsafe_allow_html=True)
@@ -156,7 +173,6 @@ if st.session_state['user'] is None:
                 try: 
                     res = supabase.auth.sign_in_with_password({"email": email, "password": pwd})
                     st.session_state['user'] = res.user
-                    # 登录成功，种下 30 天免登录 Cookie
                     cookie_manager.set("saved_email", res.user.email, max_age=30*24*3600)
                     cookie_manager.set("saved_uid", res.user.id, max_age=30*24*3600)
                     cookie_manager.set("saved_sign", get_secure_sign(res.user.email), max_age=30*24*3600)
@@ -207,19 +223,14 @@ if current_exp and not IS_ADMIN:
     status_icon = "🔴" if is_expired else "🟢"
     st.sidebar.caption(f"{status_icon} VIP到期日: {current_exp.strftime('%Y-%m-%d')}")
 
-# 安全退出：不仅清空内存，还要删除 Cookie
 if st.sidebar.button("🚪 退出系统", use_container_width=True): 
-    cookie_manager.delete("saved_email")
-    cookie_manager.delete("saved_uid")
-    cookie_manager.delete("saved_sign")
-    st.session_state['user'] = None
-    st.rerun()
+    cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
+    st.session_state['user'] = None; st.rerun()
 
 if not IS_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
     st.info(f"👉 您的账号资料已安全锁定。请联系管理员微信 **{CONTACT_WECHAT}** 进行续费激活，解锁全部权限！")
     st.stop()
-
 
 # ==========================================
 # 👑 模块：老板 CRM 管理后台
@@ -247,30 +258,19 @@ if IS_ADMIN and page == "👑 老板管理后台":
             sub_data = supabase.table('subscriptions').select('*').execute().data
             if sub_data:
                 df_subs = pd.DataFrame(sub_data)
-                now_dt = datetime.datetime.now()
-                df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
+                now_dt = datetime.datetime.now(); df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
                 df_subs['状态'] = df_subs['到期时间'].apply(lambda x: "🔴 已过期" if x < now_dt else "🟢 正常")
                 
                 st.metric("总注册用户数", len(df_subs))
-                
-                user_list = df_subs['user_email'].tolist()
-                selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", user_list)
+                selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", df_subs['user_email'].tolist())
                 
                 if selected_user:
-                    user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]
-                    curr_exp = user_info['到期时间']
-                    
-                    st.markdown(f"""
-                    <div style='background:#F4F6F1; padding:15px; border-radius:8px; border:1px solid #EAECEF; margin-bottom:15px;'>
-                        <b style='font-size:1.1em;'>客户：{selected_user}</b><br>
-                        当前状态：{user_info['状态']}<br>
-                        到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]; curr_exp = user_info['到期时间']
+                    st.markdown(f"""<div style='background:#F8FAF5; padding:15px; border-radius:8px; border:1px solid #DFE3DB; margin-bottom:15px;'>
+                        <b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>""", unsafe_allow_html=True)
                     
                     st.markdown("##### ⚡ 老板特权：一键充值 (免密续费)")
-                    col_r1, col_r2, col_r3 = st.columns(3)
-                    add_days = 0
+                    col_r1, col_r2, col_r3 = st.columns(3); add_days = 0
                     if col_r1.button("💸 续费 30 天", use_container_width=True): add_days = 30
                     if col_r2.button("💸 续费 90 天", use_container_width=True): add_days = 90
                     if col_r3.button("💸 续费 365 天", use_container_width=True): add_days = 365
@@ -294,15 +294,13 @@ if IS_ADMIN and page == "👑 老板管理后台":
                 df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
                 if 'used_by' in df_codes.columns:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'used_by', 'created_at']]
-                    display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']
-                    display_codes['使用者'] = display_codes['使用者'].fillna('-')
+                    display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']; display_codes['使用者'] = display_codes['使用者'].fillna('-')
                 else:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
                 st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
             else: st.info("还没有生成过激活码。")
         except: pass
-
 
 # ==========================================
 # 📚 模块：公共教材图书馆
@@ -335,7 +333,9 @@ elif page == "📚 公共教材图书馆":
             
             if filtered_lib:
                 st.divider()
-                col_toc, col_read, col_tools = st.columns([1, 2.5, 1.2], gap="medium")
+                # ⚠️ 黄金比例再次进化：极限压缩左侧目录 (0.7)，让出中央阅读区 (3.2)
+                col_toc, col_read, col_tools = st.columns([0.7, 3.2, 1.2], gap="medium")
+                
                 with col_toc:
                     st.markdown("##### 📑 目录")
                     st.markdown("<div class='toc-radio'>", unsafe_allow_html=True)
@@ -347,8 +347,9 @@ elif page == "📚 公共教材图书馆":
                 with col_read:
                     st.markdown(f"#### {selected_item.get('title')}")
                     clean_html_text = format_reading_text(selected_item.get('content', ''))
+                    # ⚠️ 纸张色与大背景完美融合，不刺眼。行间距收紧。
                     st.markdown(f"""
-                    <div style='background-color: #F3F6F0; padding: 25px 30px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.6; text-align: justify; height: 600px; overflow-y: auto; border: 1px solid #EAECEF; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);'>
+                    <div style='background-color: #F8FAF6; padding: 25px 35px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.6; text-align: justify; height: 600px; overflow-y: auto; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.03);'>
                         {clean_html_text}
                     </div>
                     """, unsafe_allow_html=True)
@@ -385,7 +386,7 @@ elif page == "📚 公共教材图书馆":
                                         txt = f"[{1}] {s.get('en','')}\n译：{s.get('cn','')}\n🔍 语法：{s.get('syntax','')}\n💡 词法：{s.get('words','')}\n\n"
                                         supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": clip_sentence, "teaching_plan": txt, "translation": json.dumps(clip_data), "category": "摘抄好句"}).execute()
                                         st.success("✅ 解析完成！已保存至【档案馆-摘抄好句】")
-                                        st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
+                                        st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #DFE3DB;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
                                     except: st.error("解析失败")
             else: st.info("该分类下暂无内容。")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
@@ -430,7 +431,7 @@ elif page == "🔍 智能精读教研室":
                 except Exception: st.error("保存失败")
                     
         for i, s in enumerate(res.get('sentences', [])):
-            st.markdown(f"""<div style='background:#F4F6F1; border-radius:8px; padding:12px; margin-bottom:8px;'>
+            st.markdown(f"""<div style='background:#F8FAF6; border-radius:8px; padding:12px; margin-bottom:8px; border:1px solid #DFE3DB;'>
                 <div style='font-family: Times New Roman; font-size:1.05em; font-weight:bold;'>[{i+1}] {s.get('en','')}</div><div style='color:#555; font-size:0.95em;'>译：{s.get('cn','')}</div>
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
 
@@ -466,8 +467,8 @@ elif page == "🗂️ 文章分类档案馆":
                                 if st.button("🗑️ 永久删除", key=f"del_{art_id}_{i}", use_container_width=True):
                                     supabase.table('articles').delete().eq('id', art_id).execute(); st.rerun()
                                     
-                            st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F3F6F0; padding:12px; border-radius:6px; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
-                            st.markdown("##### 🔬 解析"); st.markdown(f"<div style='background-color:#F3F6F0; padding:16px; border-radius:6px; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
+                            st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F8FAF6; padding:12px; border-radius:6px; border:1px solid #DFE3DB; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
+                            st.markdown("##### 🔬 解析"); st.markdown(f"<div style='background-color:#F8FAF6; padding:16px; border-radius:6px; border:1px solid #DFE3DB; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
                     else: st.info("暂无记录。")
         else: st.info("空空如也。")
     except: pass
