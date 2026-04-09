@@ -8,6 +8,7 @@ import random
 import string
 import re
 import hashlib
+import urllib.parse
 import extra_streamlit_components as esc
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -83,6 +84,10 @@ custom_css = """
     .toc-radio div[role="radiogroup"] > label:hover { background-color: #DFE6D8 !important; }
     .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #D3DCCB !important; border-left: 3px solid #3A5F40 !important; }
     .toc-radio div[role="radiogroup"] > label[data-checked="true"] p { font-weight: bold !important; color: #111 !important;}
+    
+    .audio-btn { cursor: pointer; margin-left: 8px; font-size: 1.15em; transition: all 0.2s ease; display: inline-block; }
+    .audio-btn:hover { transform: scale(1.3); text-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+    .audio-btn:active { transform: scale(0.9); }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -204,7 +209,7 @@ if not IS_ADMIN:
         is_expired = True
 
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
-menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词汇分级记忆库"]
+menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
 if IS_ADMIN: menu_options.append("👑 老板管理后台")
 
 st.sidebar.markdown("## 🏛️ 工作台")
@@ -303,8 +308,11 @@ elif page == "📚 公共教材图书馆":
                     supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.rerun()
 
     try:
-        lib_data = supabase.table('public_library').select('*').execute().data
-        if lib_data is not None:
+        # ⚠️ 过滤掉"公共词库"分类，不在这里显示
+        lib_data_raw = supabase.table('public_library').select('*').execute().data
+        lib_data = [a for a in lib_data_raw if a.get('category') != "公共词库"] if lib_data_raw else []
+        
+        if lib_data:
             df_lib = pd.DataFrame(lib_data)
             if not df_lib.empty:
                 db_cats = list(df_lib['category'].dropna().unique())
@@ -343,7 +351,8 @@ elif page == "📚 公共教材图书馆":
                                             try:
                                                 res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                                 word_data = json.loads(res.choices[0].message.content)
-                                                st.info(f"**{word_data.get('word')}** {word_data.get('phonetic')}\n\n**释义**：{word_data.get('translation')}\n\n**记忆**：{word_data.get('memory_tip')}")
+                                                audio_url = f"https://dict.youdao.com/dictvoice?audio={urllib.parse.quote(word_data.get('word', ''))}&type=2"
+                                                st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} <span class=\"audio-btn\" onclick=\"new Audio('{audio_url}').play()\" title=\"点击发音\">🔊</span><br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
                                                 word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                             except: st.error("查词失败")
                             with tab_clip:
@@ -447,28 +456,104 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词汇分级记忆库 (🌟 深度护眼定制表格-防代码块化)
+# 🔠 模块：词汇库与大纲 (🌟 核心生态系统升级)
 # ==========================================
-elif page == "🔠 词汇分级记忆库":
-    st.title("🔠 私人词汇库")
-    try:
-        vocab_data = supabase.table('vocabulary').select('*').eq('user_id', CURRENT_USER_ID).execute().data
-        if vocab_data:
-            df_vocab = pd.DataFrame(vocab_data)
-            tag_filter = st.selectbox("🎓 筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
-            display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
-            
-            st.metric("生词量", len(display_df))
-            
-            # ⚠️ 这里通过将代码全部挤在一行的方式，彻底杜绝 Markdown 将其误认为代码块！
-            html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th></tr></thead><tbody>"
-            
-            for _, row in display_df.iterrows():
-                html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}</td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td></tr>"
-            
-            html_table += "</tbody></table></div>"
-            
-            st.markdown(html_table, unsafe_allow_html=True)
-            
-        else: st.info("词汇库还是空的，快去阅读文章添加生词吧！")
-    except Exception as e: pass
+elif page == "🔠 词库与大纲":
+    st.title("🔠 词汇生态系统")
+    
+    tab_mine, tab_public = st.tabs(["📓 我的私人生词本", "🌍 公共大纲词库"])
+    
+    # ---------------- 频道 1：我的生词本 ----------------
+    with tab_mine:
+        try:
+            vocab_data = supabase.table('vocabulary').select('*').eq('user_id', CURRENT_USER_ID).execute().data
+            if vocab_data:
+                df_vocab = pd.DataFrame(vocab_data)
+                
+                # 🌟 顶部管理台：批量导出与删除
+                with st.expander("⚙️ 批量管理 (导出 / 删除)"):
+                    words_to_manage = st.multiselect("请选择要操作的单词：", df_vocab['word'].tolist())
+                    if words_to_manage:
+                        c_exp, c_del = st.columns(2)
+                        # 导出逻辑
+                        csv_data = df_vocab[df_vocab['word'].isin(words_to_manage)].to_csv(index=False).encode('utf-8-sig')
+                        c_exp.download_button("📥 导出选中为 CSV", csv_data, "选中的生词.csv", "text/csv", use_container_width=True)
+                        # 删除逻辑
+                        if c_del.button("🗑️ 永久删除选中", use_container_width=True):
+                            for w in words_to_manage:
+                                supabase.table('vocabulary').delete().eq('user_id', CURRENT_USER_ID).eq('word', w).execute()
+                            st.success("✅ 删除成功！"); st.rerun()
+
+                tag_filter = st.selectbox("🎓 分类筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
+                display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
+                
+                st.metric("生词量", len(display_df))
+                
+                # 🌟 表格升级：新增【例句】列
+                html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
+                
+                for _, row in display_df.iterrows():
+                    safe_word = urllib.parse.quote(row.get('word', ''))
+                    audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
+                    html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}<span class='audio-btn' onclick=\"new Audio('{audio_link}').play()\" title='点击听纯正美音'>🔊</span></td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{row.get('usage_examples','')}</td></tr>"
+                
+                html_table += "</tbody></table></div>"
+                st.markdown(html_table, unsafe_allow_html=True)
+                
+            else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
+        except Exception as e: pass
+
+    # ---------------- 频道 2：公共大纲词库 ----------------
+    with tab_public:
+        if IS_ADMIN:
+            with st.expander("👑 馆长专属：用 AI 批量生成公共词库", expanded=False):
+                st.info("💡 你只需要输入一堆单词，AI会自动帮你补齐音标、释义、例句并上架！（建议每次输入 30-50 个单词）")
+                v_title = st.text_input("词库书名 (例如: 中考必背词汇 1-50)")
+                v_level = st.selectbox("适用级别", ["小学", "初中", "高中", "大学四六级", "雅思托福", "其他"])
+                v_raw = st.text_area("粘贴你要上架的单词 (用逗号或换行隔开即可)", height=100)
+                
+                if st.button("🤖 AI 一键解析并发布", type="primary"):
+                    if v_title and v_raw.strip():
+                        with st.spinner("AI 正在疯狂撰写解析库，请稍候..."):
+                            prompt = f"""作为英语教学专家，批量解析以下单词，并严格返回JSON格式：{{"core_vocabulary": [{{"word": "单词", "phonetic": "音标", "translation": "精简释义", "memory_tip": "一句精简的词根或联想记忆法", "usage_examples": "一个简短的英文例句及中文", "tags": "{v_level}"}}]}}。单词列表：\n{v_raw[:1000]}"""
+                            try:
+                                res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
+                                parsed_json = res.choices[0].message.content
+                                # 存入 library 表，分类固定为"公共词库"
+                                supabase.table('public_library').insert({"title": v_title, "category": "公共词库", "content": parsed_json}).execute()
+                                st.success("✅ 词库发布成功！全员可见。"); st.rerun()
+                            except Exception as e: st.error("解析失败，请减少单词数量重试。")
+                    else: st.warning("请填写名称和单词。")
+
+        try:
+            # 获取所有公共词库
+            pub_vocab_raw = supabase.table('public_library').select('*').eq('category', '公共词库').execute().data
+            if pub_vocab_raw:
+                # 顶部词书选择器
+                vocab_options = [f"📚 {v.get('title')}" for v in pub_vocab_raw]
+                selected_v_title = st.selectbox("选择大纲词库", vocab_options, label_visibility="collapsed")
+                selected_vocab = pub_vocab_raw[vocab_options.index(selected_v_title)]
+                
+                # 提取 JSON 数据
+                try:
+                    vocab_json = json.loads(selected_vocab.get('content', '{}')).get('core_vocabulary', [])
+                    
+                    # 🌟 一键白嫖按钮
+                    if st.button("⭐ 将这本词书全部加入我的私人生词本", type="primary", use_container_width=True):
+                        with st.spinner("正在导入..."):
+                            for v in vocab_json:
+                                v['user_id'] = CURRENT_USER_ID
+                                supabase.table('vocabulary').insert(v).execute()
+                            st.success("✅ 导入成功！快去【我的私人生词本】复习吧！")
+                    
+                    # 展示公共词库表格
+                    v_html = "<div style='max-height: 500px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>例句</th></tr></thead><tbody>"
+                    for row in vocab_json:
+                        s_w = urllib.parse.quote(row.get('word', ''))
+                        v_html += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}<span class='audio-btn' onclick=\"new Audio('https://dict.youdao.com/dictvoice?audio={s_w}&type=2').play()\">🔊</span></td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px; color: #555; font-size:0.9em;'>{row.get('usage_examples','')}</td></tr>"
+                    v_html += "</tbody></table></div>"
+                    st.markdown(v_html, unsafe_allow_html=True)
+                except: st.error("词库格式异常。")
+            else:
+                st.info("🌍 馆长还没上传过大纲词汇，敬请期待！")
+        except: pass
