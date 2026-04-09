@@ -43,48 +43,26 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致双层护眼视觉系统 (字号与表格美化)
+# 🎨 UI/UX 极致双层护眼视觉系统
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
 custom_css = """
 <style>
-    /* 1. 极限消除顶部留白 */
-    .block-container {
-        padding-top: 1rem !important; 
-        padding-bottom: 1rem !important;
-        margin-top: 0 !important;
-    }
-    [data-testid="stAppViewBlockContainer"] {
-        padding-top: 1rem !important; 
-    }
-    [data-testid="stHeader"] {
-        display: none !important;
-        height: 0 !important;
-    }
-    .stHeadingContainer {
-        margin-top: -1.5rem !important;
-    }
+    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; margin-top: 0 !important; }
+    [data-testid="stAppViewBlockContainer"] { padding-top: 1rem !important; }
+    [data-testid="stHeader"] { display: none !important; height: 0 !important; }
+    .stHeadingContainer { margin-top: -1.5rem !important; }
     
-    /* 🌟 核心优化：标题字号全面瘦身，更加精致 */
-    h1 {
-        font-size: 1.8rem !important; 
-        margin-top: -1rem !important;
-        padding-bottom: 15px !important;
-    }
+    h1 { font-size: 1.8rem !important; margin-top: -1rem !important; padding-bottom: 15px !important; }
     h2 { font-size: 1.4rem !important; }
     h3 { font-size: 1.2rem !important; }
     h4 { font-size: 1.1rem !important; }
     h5 { font-size: 1.05rem !important; }
 
-    /* 2. 全局大背景：柔和的抹茶豆沙绿 */
-    .stApp { 
-        background-color: #EBF0E5 !important; 
-    }
-
+    .stApp { background-color: #EBF0E5 !important; }
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     
-    /* 侧边栏 */
     section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 10px !important; border-radius: 6px !important; margin: 0 !important; border: none !important; cursor: pointer; }
@@ -95,15 +73,11 @@ custom_css = """
     
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    
-    /* 输入框护眼色 */
     .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
     
-    /* 顶部图书分类标签 */
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
     div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.95em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
     
-    /* 左侧目录极致护眼压缩 */
     .toc-radio div[role="radiogroup"] > label { padding: 6px 8px !important; background: transparent !important; border: none !important; border-radius: 4px; transition: all 0.2s; }
     .toc-radio div[role="radiogroup"] > label p { font-size: 0.85em !important; color: #444; }
     .toc-radio div[role="radiogroup"] > label:hover { background-color: #DFE6D8 !important; }
@@ -258,9 +232,7 @@ if not IS_ADMIN and is_expired:
 # ==========================================
 if IS_ADMIN and page == "👑 老板管理后台":
     st.title("👑 老板全能控制台")
-    
     tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 一键续费", "📋 激活码查账明细"])
-    
     with tab_gen:
         st.markdown("#### 🔨 生成新激活码")
         with st.form("gen_code_form"):
@@ -272,47 +244,38 @@ if IS_ADMIN and page == "👑 老板管理后台":
                     supabase.table('invitation_codes').insert({"code": new_code, "duration_days": days_map[plan], "is_used": False}).execute()
                     st.success(f"生成成功: {new_code}"); st.code(new_code)
                 except: st.error("生成失败")
-
     with tab_users:
         st.markdown("#### 👥 客户关系管理")
         try:
             sub_data = supabase.table('subscriptions').select('*').execute().data
             if sub_data:
-                df_subs = pd.DataFrame(sub_data)
-                now_dt = datetime.datetime.now(); df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
+                df_subs = pd.DataFrame(sub_data); now_dt = datetime.datetime.now(); df_subs['到期时间'] = pd.to_datetime(df_subs['expires_at'])
                 df_subs['状态'] = df_subs['到期时间'].apply(lambda x: "🔴 已过期" if x < now_dt else "🟢 正常")
-                
                 st.metric("总注册用户数", len(df_subs))
                 selected_user = st.selectbox("🔍 搜索或选择要操作的客户账号：", df_subs['user_email'].tolist())
-                
                 if selected_user:
                     user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]; curr_exp = user_info['到期时间']
-                    st.markdown(f"""<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'>
-                        <b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>""", unsafe_allow_html=True)
-                    
+                    st.markdown(f"<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'><b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>", unsafe_allow_html=True)
                     st.markdown("##### ⚡ 老板特权：一键充值 (免密续费)")
                     col_r1, col_r2, col_r3 = st.columns(3); add_days = 0
                     if col_r1.button("💸 续费 30 天", use_container_width=True): add_days = 30
                     if col_r2.button("💸 续费 90 天", use_container_width=True): add_days = 90
                     if col_r3.button("💸 续费 365 天", use_container_width=True): add_days = 365
-                    
                     if add_days > 0:
                         base_date = curr_exp if curr_exp > now_dt else now_dt
                         new_exp = base_date + datetime.timedelta(days=add_days)
                         try:
                             supabase.table('subscriptions').update({'expires_at': new_exp.isoformat()}).eq('user_email', selected_user).execute()
                             st.success(f"✅ 续费成功！已为 {selected_user} 增加 {add_days} 天。")
-                        except Exception as e: st.error(f"续费失败: {e}")
+                        except: st.error("续费失败")
             else: st.info("当前还没有注册用户。")
-        except: st.error("加载用户数据失败。")
-
+        except: pass
     with tab_codes:
         st.markdown("#### 📋 激活码核销账本")
         try:
             codes_data = supabase.table('invitation_codes').select('*').execute().data
             if codes_data:
-                df_codes = pd.DataFrame(codes_data)
-                df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
+                df_codes = pd.DataFrame(codes_data); df_codes['状态'] = df_codes['is_used'].apply(lambda x: "🔴 已核销" if x else "🟢 未使用")
                 if 'used_by' in df_codes.columns:
                     display_codes = df_codes[['code', 'duration_days', '状态', 'used_by', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '使用者', '生成时间']; display_codes['使用者'] = display_codes['使用者'].fillna('-')
@@ -320,31 +283,24 @@ if IS_ADMIN and page == "👑 老板管理后台":
                     display_codes = df_codes[['code', 'duration_days', '状态', 'created_at']]
                     display_codes.columns = ['激活码', '授权天数', '状态', '生成时间']
                 st.dataframe(display_codes.sort_values(by='生成时间', ascending=False), use_container_width=True, hide_index=True)
-            else: st.info("还没有生成过激活码。")
         except: pass
 
 # ==========================================
 # 📚 模块：公共教材图书馆
 # ==========================================
 elif page == "📚 公共教材图书馆":
-    
     base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
-    
     if IS_ADMIN:
         with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
-            lib_title = st.text_input("篇目标题")
-            lib_cat = st.selectbox("选择分类", base_categories[1:])
+            lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
             upload_method = st.radio("录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
-            lib_content = ""
-            if upload_method == "手动粘贴": lib_content = st.text_area("正文", height=100)
-            else:
+            lib_content = st.text_area("正文", height=100) if upload_method == "手动粘贴" else ""
+            if upload_method != "手动粘贴":
                 uploaded_file = st.file_uploader("选择文档", type=["pdf", "docx", "txt"])
                 if uploaded_file: lib_content = extract_text_from_file(uploaded_file); st.success("提取成功！")
-            
             if st.button("⬆️ 上传至公共书架", type="primary"):
                 if lib_title and lib_content.strip():
-                    supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute()
-                    st.success("✅ 上传成功！"); st.rerun()
+                    supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.rerun()
 
     try:
         lib_data = supabase.table('public_library').select('*').execute().data
@@ -352,11 +308,7 @@ elif page == "📚 公共教材图书馆":
             df_lib = pd.DataFrame(lib_data)
             if not df_lib.empty:
                 db_cats = list(df_lib['category'].dropna().unique())
-                final_categories = []
-                for c in base_categories:
-                    if c == "全部" or c in db_cats: final_categories.append(c)
-                for c in db_cats:
-                    if c not in final_categories: final_categories.append(c)
+                final_categories = [c for c in base_categories if c == "全部" or c in db_cats] + [c for c in db_cats if c not in base_categories]
             else: final_categories = ["全部"]
 
             tabs = st.tabs(final_categories)
@@ -364,7 +316,6 @@ elif page == "📚 公共教材图书馆":
                 with tab:
                     cat_filter = final_categories[i]
                     filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
-                    
                     if filtered_lib:
                         col_toc, col_read, col_tools = st.columns([0.7, 3.2, 1.2], gap="medium")
                         with col_toc:
@@ -374,21 +325,14 @@ elif page == "📚 公共教材图书馆":
                             selected_title = st.radio("目录", options, key=f"toc_{i}", label_visibility="collapsed")
                             st.markdown("</div>", unsafe_allow_html=True)
                             selected_item = filtered_lib[options.index(selected_title)]
-                        
                         with col_read:
                             st.markdown(f"#### {selected_item.get('title')}")
                             clean_html_text = format_reading_text(selected_item.get('content', ''))
                             paper_bg = "#F5F7EC" 
-                            st.markdown(f"""
-                            <div style='background-color: {paper_bg}; padding: 30px 40px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 650px; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
-                                {clean_html_text}
-                            </div>
-                            """, unsafe_allow_html=True)
-
+                            st.markdown(f"<div style='background-color: {paper_bg}; padding: 30px 40px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 650px; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
                         with col_tools:
                             st.markdown("#### 🛠️ 伴读助手")
                             tab_dict, tab_clip = st.tabs(["🔍 查词", "📝 摘抄"])
-                            
                             with tab_dict:
                                 st.caption("复制左侧生词粘贴查阅")
                                 lookup_word = st.text_input("输入英文生词", label_visibility="collapsed", placeholder="例如: consecutive", key=f"word_{i}")
@@ -400,10 +344,8 @@ elif page == "📚 公共教材图书馆":
                                                 res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                                 word_data = json.loads(res.choices[0].message.content)
                                                 st.info(f"**{word_data.get('word')}** {word_data.get('phonetic')}\n\n**释义**：{word_data.get('translation')}\n\n**记忆**：{word_data.get('memory_tip')}")
-                                                word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute()
-                                                st.success("✅ 已存入记忆库")
+                                                word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                             except: st.error("查词失败")
-                            
                             with tab_clip:
                                 st.caption("复制左侧难句解析")
                                 clip_sentence = st.text_area("输入句子", label_visibility="collapsed", height=100, placeholder="粘贴想精读的句子...", key=f"clip_{i}")
@@ -505,7 +447,7 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词汇分级记忆库 (🌟 深度护眼定制表格)
+# 🔠 模块：词汇分级记忆库 (🌟 深度护眼定制表格-防代码块化)
 # ==========================================
 elif page == "🔠 词汇分级记忆库":
     st.title("🔠 私人词汇库")
@@ -518,36 +460,14 @@ elif page == "🔠 词汇分级记忆库":
             
             st.metric("生词量", len(display_df))
             
-            # 🌟 核心：抛弃刺眼默认表格，构建护眼沉浸式 HTML 数据表
-            html_table = f"""
-            <div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
-                <table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: "Times New Roman", "等线", serif;'>
-                    <thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'>
-                        <tr>
-                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>单词</th>
-                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>音标</th>
-                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>释义</th>
-                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>级别</th>
-                            <th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; font-weight: bold;'>记忆法</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            """
+            # ⚠️ 这里通过将代码全部挤在一行的方式，彻底杜绝 Markdown 将其误认为代码块！
+            html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th></tr></thead><tbody>"
+            
             for _, row in display_df.iterrows():
-                html_table += f"""
-                        <tr style='border-bottom: 1px solid #EAECEF;'>
-                            <td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td>
-                            <td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}</td>
-                            <td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td>
-                            <td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td>
-                            <td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td>
-                        </tr>
-                """
-            html_table += """
-                    </tbody>
-                </table>
-            </div>
-            """
+                html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}</td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td></tr>"
+            
+            html_table += "</tbody></table></div>"
+            
             st.markdown(html_table, unsafe_allow_html=True)
             
         else: st.info("词汇库还是空的，快去阅读文章添加生词吧！")
