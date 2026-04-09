@@ -17,6 +17,7 @@ from docx.oxml.ns import qn, nsdecls
 from openai import OpenAI
 from supabase import create_client, Client
 from pypdf import PdfReader
+from openpyxl.styles import PatternFill, Font, Alignment
 
 # ==========================================
 # ⚙️ 核心配置区
@@ -149,6 +150,49 @@ def format_reading_text(text):
     cleaned = text.replace('\r\n', '\n').replace('\n\n', '§§§')
     cleaned = cleaned.replace('\n', ' ')
     return cleaned.replace('§§§', '<br><br>')
+
+# 🌟 新增：高级护眼 Excel 渲染引擎
+def export_styled_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='我的生词本')
+        worksheet = writer.sheets['我的生词本']
+
+        # 定义护眼色与样式
+        header_fill = PatternFill(start_color="D3DCCB", end_color="D3DCCB", fill_type="solid") # 表头深绿
+        row_fill = PatternFill(start_color="F5F7EC", end_color="F5F7EC", fill_type="solid")     # 数据行浅绿
+        header_font = Font(name="等线", bold=True, color="1F4E79", size=12)
+        base_font = Font(name="等线", size=11, color="2C3E50")
+        
+        # 定义对齐方式（全部居中垂直，部分文字自动换行）
+        align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+        # 1. 渲染表头
+        worksheet.row_dimensions[1].height = 30 # 表头行高
+        for col_num, value in enumerate(df.columns.values):
+            cell = worksheet.cell(row=1, column=col_num + 1)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = align_center
+
+        # 2. 渲染数据行与设置行高
+        for row_num in range(2, len(df) + 2):
+            worksheet.row_dimensions[row_num].height = 40 # 舒展的行高
+            for col_num in range(1, len(df.columns) + 1):
+                cell = worksheet.cell(row=row_num, column=col_num)
+                cell.fill = row_fill
+                cell.font = base_font
+                # 单词、音标、级别居中，释义、记忆法、例句靠左
+                if col_num in [1, 2, 4]: cell.alignment = align_center
+                else: cell.alignment = align_left
+
+        # 3. 精准控制每一列的宽度
+        col_widths = {'A': 16, 'B': 18, 'C': 35, 'D': 10, 'E': 45, 'F': 60}
+        for col, width in col_widths.items():
+            worksheet.column_dimensions[col].width = width
+
+    return output.getvalue()
 
 # ==========================================
 # 🔐 认证与无感登录系统
@@ -455,7 +499,7 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词库与大纲
+# 🔠 模块：词库与大纲 (🌟 原生 Excel 导出引擎)
 # ==========================================
 elif page == "🔠 词库与大纲":
     st.title("🔠 词汇生态系统")
@@ -472,7 +516,7 @@ elif page == "🔠 词库与大纲":
                 with col_m1: st.metric("生词量", len(df_vocab))
                 with col_m2: 
                     st.write("")
-                    manage_mode = st.toggle("🛠️ 开启表格打钩/批量管理模式")
+                    manage_mode = st.toggle("🛠️ 开启打钩/批量管理模式")
                 
                 if manage_mode:
                     st.info("💡 请在表格第一列打钩（勾选）你要操作的单词。")
@@ -491,7 +535,6 @@ elif page == "🔠 词库与大纲":
                     st.write("---")
                     c1, c2, c3 = st.columns(3)
                     
-                    # 🌟 核心修复：纯净版导出，剔除内部数据，翻译表头为纯中文！
                     export_cols_map = {
                         'word': '单词', 
                         'phonetic': '音标', 
@@ -501,16 +544,15 @@ elif page == "🔠 词库与大纲":
                         'usage_examples': '例句'
                     }
                     
-                    # 导出全部时，只提取需要的列并重命名
+                    # 🌟 核心：使用原生 Excel 渲染引擎导出，彻底抛弃 CSV
                     df_export_all = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].rename(columns=export_cols_map)
-                    csv_all = df_export_all.to_csv(index=False).encode('utf-8-sig')
-                    c1.download_button("📥 导出【全部】单词", csv_all, "全部生词本.csv", "text/csv", use_container_width=True)
+                    excel_all = export_styled_excel(df_export_all)
+                    c1.download_button("📥 导出【全部】生词本", excel_all, "我的全部生词本.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
                     
                     if not selected_df.empty:
-                        # 导出选中时，丢掉打钩列并重命名
                         df_export_sel = selected_df.drop(columns=['☑️ 勾选']).rename(columns=export_cols_map)
-                        csv_sel = df_export_sel.to_csv(index=False).encode('utf-8-sig')
-                        c2.download_button(f"📥 导出选中的 {len(selected_df)} 个", csv_sel, "选中生词.csv", "text/csv", use_container_width=True)
+                        excel_sel = export_styled_excel(df_export_sel)
+                        c2.download_button(f"📥 导出选中的 {len(selected_df)} 个", excel_sel, "选中的生词.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
                         
                         if c3.button(f"🗑️ 删除选中的 {len(selected_df)} 个", type="primary", use_container_width=True):
                             for w in selected_df['word']:
