@@ -43,13 +43,13 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 沉浸式全局护眼视觉系统
+# 🎨 UI/UX 极致双层护眼视觉系统 (重磅升级配色)
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
 custom_css = """
 <style>
-    /* 1. 物理级抹除顶部巨大留白（猛药） */
+    /* 1. 极限消除顶部留白 */
     .block-container {
         padding-top: 1rem !important; 
         padding-bottom: 1rem !important;
@@ -62,7 +62,6 @@ custom_css = """
         display: none !important;
         height: 0 !important;
     }
-    /* 消除页面主标题的默认留白 */
     .stHeadingContainer {
         margin-top: -2rem !important;
     }
@@ -71,13 +70,14 @@ custom_css = """
         padding-top: 0 !important;
     }
 
-    /* 2. 大背景：极浅冷灰，衬托中央护眼阅读区 */
+    /* 2. 🌟 全局大背景：柔和的抹茶豆沙绿，吸收所有刺眼光线 */
     .stApp { 
-        background-color: #F7F9F8 !important; 
+        background-color: #EBF0E5 !important; 
     }
 
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     
+    /* 侧边栏保持深色，提供高级的对比度 */
     section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 8px 10px !important; border-radius: 6px !important; margin: 0 !important; border: none !important; cursor: pointer; }
@@ -88,17 +88,19 @@ custom_css = """
     
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #DFE3DB !important; }
     
-    /* 顶部图书分类标签（Tabs）美化 */
+    /* 🌟 输入框也融入护眼纸张色 */
+    .stTextInput input, .stTextArea textarea { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
+    
+    /* 顶部图书分类标签 */
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
     div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.95em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
     
-    /* 左侧目录极致压缩 */
+    /* 左侧目录极致护眼压缩 */
     .toc-radio div[role="radiogroup"] > label { padding: 6px 8px !important; background: transparent !important; border: none !important; border-radius: 4px; transition: all 0.2s; }
     .toc-radio div[role="radiogroup"] > label p { font-size: 0.85em !important; color: #444; }
-    .toc-radio div[role="radiogroup"] > label:hover { background-color: #E6EAE2 !important; }
-    .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #DDE4D5 !important; border-left: 3px solid #3A5F40 !important; }
+    .toc-radio div[role="radiogroup"] > label:hover { background-color: #DFE6D8 !important; }
+    .toc-radio div[role="radiogroup"] > label[data-checked="true"] { background-color: #D3DCCB !important; border-left: 3px solid #3A5F40 !important; }
     .toc-radio div[role="radiogroup"] > label[data-checked="true"] p { font-weight: bold !important; color: #111 !important;}
 </style>
 """
@@ -278,7 +280,7 @@ if IS_ADMIN and page == "👑 老板管理后台":
                 
                 if selected_user:
                     user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]; curr_exp = user_info['到期时间']
-                    st.markdown(f"""<div style='background:#F8FAF5; padding:15px; border-radius:8px; border:1px solid #DFE3DB; margin-bottom:15px;'>
+                    st.markdown(f"""<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'>
                         <b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>""", unsafe_allow_html=True)
                     
                     st.markdown("##### ⚡ 老板特权：一键充值 (免密续费)")
@@ -369,9 +371,10 @@ elif page == "📚 公共教材图书馆":
                         with col_read:
                             st.markdown(f"#### {selected_item.get('title')}")
                             clean_html_text = format_reading_text(selected_item.get('content', ''))
-                            paper_bg = "#F4F6ED" 
+                            # 🌟 核心：温润羊皮纸护眼阅读区
+                            paper_bg = "#F5F7EC" 
                             st.markdown(f"""
-                            <div style='background-color: {paper_bg}; padding: 30px 40px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 650px; overflow-y: auto; border: 1px solid #DCE3D4; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
+                            <div style='background-color: {paper_bg}; padding: 30px 40px; border-radius: 8px; font-family: "Times New Roman", serif; font-size: 1.15em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 650px; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>
                                 {clean_html_text}
                             </div>
                             """, unsafe_allow_html=True)
@@ -408,7 +411,7 @@ elif page == "📚 公共教材图书馆":
                                                 txt = f"[{1}] {s.get('en','')}\n译：{s.get('cn','')}\n🔍 语法：{s.get('syntax','')}\n💡 词法：{s.get('words','')}\n\n"
                                                 supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": clip_sentence, "teaching_plan": txt, "translation": json.dumps(clip_data), "category": "摘抄好句"}).execute()
                                                 st.success("✅ 已存至档案馆")
-                                                st.markdown(f"<div style='font-size:0.9em; background:#fff; padding:10px; border-radius:5px; border:1px solid #DFE3DB;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
+                                                st.markdown(f"<div style='font-size:0.9em; background:#F5F7EC; padding:10px; border-radius:5px; border:1px solid #D8DFD0;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
                                             except: st.error("解析失败")
                     else: st.info("💡 当前分类下暂无教材，等待馆长上新！")
         else: st.info("📚 图书馆书架还是空的，请等待馆长上新！")
@@ -453,7 +456,7 @@ elif page == "🔍 智能精读教研室":
                 except Exception: st.error("保存失败")
                     
         for i, s in enumerate(res.get('sentences', [])):
-            st.markdown(f"""<div style='background:#F8FAF6; border-radius:8px; padding:12px; margin-bottom:8px; border:1px solid #DFE3DB;'>
+            st.markdown(f"""<div style='background:#F5F7EC; border-radius:8px; padding:12px; margin-bottom:8px; border:1px solid #D8DFD0;'>
                 <div style='font-family: Times New Roman; font-size:1.05em; font-weight:bold;'>[{i+1}] {s.get('en','')}</div><div style='color:#555; font-size:0.95em;'>译：{s.get('cn','')}</div>
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
 
@@ -489,8 +492,8 @@ elif page == "🗂️ 文章分类档案馆":
                                 if st.button("🗑️ 永久删除", key=f"del_{art_id}_{i}", use_container_width=True):
                                     supabase.table('articles').delete().eq('id', art_id).execute(); st.rerun()
                                     
-                            st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F4F6ED; padding:12px; border-radius:6px; border:1px solid #DFE3DB; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
-                            st.markdown("##### 🔬 解析"); st.markdown(f"<div style='background-color:#F4F6ED; padding:16px; border-radius:6px; border:1px solid #DFE3DB; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
+                            st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F5F7EC; padding:12px; border-radius:6px; border:1px solid #D8DFD0; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
+                            st.markdown("##### 🔬 解析"); st.markdown(f"<div style='background-color:#F5F7EC; padding:16px; border-radius:6px; border:1px solid #D8DFD0; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
                     else: st.info("暂无记录。")
         else: st.info("空空如也。")
     except: pass
