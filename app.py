@@ -308,7 +308,6 @@ elif page == "📚 公共教材图书馆":
                     supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.rerun()
 
     try:
-        # ⚠️ 过滤掉"公共词库"分类，不在这里显示
         lib_data_raw = supabase.table('public_library').select('*').execute().data
         lib_data = [a for a in lib_data_raw if a.get('category') != "公共词库"] if lib_data_raw else []
         
@@ -456,7 +455,7 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词汇库与大纲 (🌟 核心生态系统升级)
+# 🔠 模块：词库与大纲 (🌟 表格管理模式双轨制)
 # ==========================================
 elif page == "🔠 词库与大纲":
     st.title("🔠 词汇生态系统")
@@ -470,35 +469,57 @@ elif page == "🔠 词库与大纲":
             if vocab_data:
                 df_vocab = pd.DataFrame(vocab_data)
                 
-                # 🌟 顶部管理台：批量导出与删除
-                with st.expander("⚙️ 批量管理 (导出 / 删除)"):
-                    words_to_manage = st.multiselect("请选择要操作的单词：", df_vocab['word'].tolist())
-                    if words_to_manage:
-                        c_exp, c_del = st.columns(2)
-                        # 导出逻辑
-                        csv_data = df_vocab[df_vocab['word'].isin(words_to_manage)].to_csv(index=False).encode('utf-8-sig')
-                        c_exp.download_button("📥 导出选中为 CSV", csv_data, "选中的生词.csv", "text/csv", use_container_width=True)
-                        # 删除逻辑
-                        if c_del.button("🗑️ 永久删除选中", use_container_width=True):
-                            for w in words_to_manage:
+                col_m1, col_m2 = st.columns([1, 1])
+                with col_m1: st.metric("生词量", len(df_vocab))
+                with col_m2: 
+                    st.write("")
+                    # 🌟 核心开关：切换沉浸护眼模式 / 表格批量打钩管理模式
+                    manage_mode = st.toggle("🛠️ 开启表格打钩/批量管理模式")
+                
+                if manage_mode:
+                    st.info("💡 请在表格第一列打钩（勾选）你要操作的单词。")
+                    df_manage = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].copy()
+                    df_manage.insert(0, "☑️ 勾选", False)
+                    
+                    edited_df = st.data_editor(
+                        df_manage,
+                        hide_index=True,
+                        use_container_width=True,
+                        column_config={"☑️ 勾选": st.column_config.CheckboxColumn("☑️ 勾选", default=False, width="small")}
+                    )
+                    
+                    selected_df = edited_df[edited_df["☑️ 勾选"] == True]
+                    
+                    st.write("---")
+                    c1, c2, c3 = st.columns(3)
+                    
+                    csv_all = df_vocab.to_csv(index=False).encode('utf-8-sig')
+                    c1.download_button("📥 导出【全部】单词", csv_all, "全部生词本.csv", "text/csv", use_container_width=True)
+                    
+                    if not selected_df.empty:
+                        csv_sel = selected_df.drop(columns=['☑️ 勾选']).to_csv(index=False).encode('utf-8-sig')
+                        c2.download_button(f"📥 导出选中的 {len(selected_df)} 个", csv_sel, "选中生词.csv", "text/csv", use_container_width=True)
+                        
+                        if c3.button(f"🗑️ 删除选中的 {len(selected_df)} 个", type="primary", use_container_width=True):
+                            for w in selected_df['word']:
                                 supabase.table('vocabulary').delete().eq('user_id', CURRENT_USER_ID).eq('word', w).execute()
                             st.success("✅ 删除成功！"); st.rerun()
+                    else:
+                        c2.button("📥 导出选中的 (请先打钩)", disabled=True, use_container_width=True)
+                        c3.button("🗑️ 删除选中的 (请先打钩)", disabled=True, use_container_width=True)
 
-                tag_filter = st.selectbox("🎓 分类筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
-                display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
-                
-                st.metric("生词量", len(display_df))
-                
-                # 🌟 表格升级：新增【例句】列
-                html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
-                
-                for _, row in display_df.iterrows():
-                    safe_word = urllib.parse.quote(row.get('word', ''))
-                    audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-                    html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}<span class='audio-btn' onclick=\"new Audio('{audio_link}').play()\" title='点击听纯正美音'>🔊</span></td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{row.get('usage_examples','')}</td></tr>"
-                
-                html_table += "</tbody></table></div>"
-                st.markdown(html_table, unsafe_allow_html=True)
+                else:
+                    # 原本带发音的极致护眼 HTML 表格
+                    tag_filter = st.selectbox("🎓 分类筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
+                    display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
+                    
+                    html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
+                    for _, row in display_df.iterrows():
+                        safe_word = urllib.parse.quote(row.get('word', ''))
+                        audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
+                        html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{row.get('word','')}</td><td style='padding: 12px 16px; color: #666;'>{row.get('phonetic','')}<span class='audio-btn' onclick=\"new Audio('{audio_link}').play()\" title='点击听发音'>🔊</span></td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{row.get('usage_examples','')}</td></tr>"
+                    html_table += "</tbody></table></div>"
+                    st.markdown(html_table, unsafe_allow_html=True)
                 
             else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
         except Exception as e: pass
@@ -510,7 +531,7 @@ elif page == "🔠 词库与大纲":
                 st.info("💡 你只需要输入一堆单词，AI会自动帮你补齐音标、释义、例句并上架！（建议每次输入 30-50 个单词）")
                 v_title = st.text_input("词库书名 (例如: 中考必背词汇 1-50)")
                 v_level = st.selectbox("适用级别", ["小学", "初中", "高中", "大学四六级", "雅思托福", "其他"])
-                v_raw = st.text_area("粘贴你要上架的单词 (用逗号或换行隔开即可)", height=100)
+                v_raw = st.text_area("粘贴你要上架的单词 (用逗号或空格隔开即可)", height=100)
                 
                 if st.button("🤖 AI 一键解析并发布", type="primary"):
                     if v_title and v_raw.strip():
@@ -519,26 +540,21 @@ elif page == "🔠 词库与大纲":
                             try:
                                 res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                 parsed_json = res.choices[0].message.content
-                                # 存入 library 表，分类固定为"公共词库"
                                 supabase.table('public_library').insert({"title": v_title, "category": "公共词库", "content": parsed_json}).execute()
                                 st.success("✅ 词库发布成功！全员可见。"); st.rerun()
                             except Exception as e: st.error("解析失败，请减少单词数量重试。")
                     else: st.warning("请填写名称和单词。")
 
         try:
-            # 获取所有公共词库
             pub_vocab_raw = supabase.table('public_library').select('*').eq('category', '公共词库').execute().data
             if pub_vocab_raw:
-                # 顶部词书选择器
                 vocab_options = [f"📚 {v.get('title')}" for v in pub_vocab_raw]
                 selected_v_title = st.selectbox("选择大纲词库", vocab_options, label_visibility="collapsed")
                 selected_vocab = pub_vocab_raw[vocab_options.index(selected_v_title)]
                 
-                # 提取 JSON 数据
                 try:
                     vocab_json = json.loads(selected_vocab.get('content', '{}')).get('core_vocabulary', [])
                     
-                    # 🌟 一键白嫖按钮
                     if st.button("⭐ 将这本词书全部加入我的私人生词本", type="primary", use_container_width=True):
                         with st.spinner("正在导入..."):
                             for v in vocab_json:
@@ -546,7 +562,6 @@ elif page == "🔠 词库与大纲":
                                 supabase.table('vocabulary').insert(v).execute()
                             st.success("✅ 导入成功！快去【我的私人生词本】复习吧！")
                     
-                    # 展示公共词库表格
                     v_html = "<div style='max-height: 500px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>例句</th></tr></thead><tbody>"
                     for row in vocab_json:
                         s_w = urllib.parse.quote(row.get('word', ''))
