@@ -45,7 +45,7 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致双层护眼视觉系统
+# 🎨 UI/UX 极致视觉系统与画廊书架样式
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
 
@@ -65,31 +65,23 @@ custom_css = """
     .stApp { background-color: #EBF0E5 !important; }
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     
-    /* 🌟 核心：物理级隐藏所有 Radio 单选框的圆白点，变成纯文字按钮 */
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child {
-        display: none !important;
-    }
-    div[role="radiogroup"] label[data-baseweb="radio"] {
-        padding-left: 0 !important;
-    }
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) {
-        margin-left: 0 !important;
-        width: 100%;
-    }
+    /* 单选框美化 */
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; }
+    div[role="radiogroup"] label[data-baseweb="radio"] { padding-left: 0 !important; }
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { margin-left: 0 !important; width: 100%; }
 
+    /* 侧边栏美化 */
     section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
     section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
-    
-    /* 侧边栏菜单美化 */
     section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 10px 12px !important; border-radius: 6px !important; margin: 2px 0 !important; border: none !important; cursor: pointer; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #8892B0 !important; font-size: 0.9em !important; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover { background-color: #202535 !important; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] { background-color: #1a1e2a !important; border-left: 3px solid #00B4D8 !important; }
     section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
-    
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background-color: #1A1E2A !important; border: 1px solid #2D2D3B !important; color: #8892B0 !important; border-radius: 6px !important;}
     section[data-testid="stSidebar"] div[data-baseweb="select"] span { color: #8892B0 !important; }
 
+    /* 按钮美化 */
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     .stTextInput input, .stTextArea textarea, .stSelectbox > div > div { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
@@ -178,7 +170,6 @@ def export_styled_excel(df):
         for col_num, value in enumerate(df.columns.values):
             cell = worksheet.cell(row=1, column=col_num + 1)
             cell.fill = header_fill; cell.font = header_font; cell.alignment = align_center
-
         for row_num in range(2, len(df) + 2):
             worksheet.row_dimensions[row_num].height = 40
             for col_num in range(1, len(df.columns) + 1):
@@ -186,7 +177,6 @@ def export_styled_excel(df):
                 cell.fill = row_fill; cell.font = base_font
                 if col_num in [1, 2, 4]: cell.alignment = align_center
                 else: cell.alignment = align_left
-
         col_widths = {'A': 16, 'B': 18, 'C': 35, 'D': 10, 'E': 45, 'F': 60}
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
@@ -254,7 +244,7 @@ else:
 
 IS_ADMIN = IS_SUPER_ADMIN or (user_role == 'admin')
 
-# 🌟 核心：将账号信息移至右上角胶囊 (Pill)
+# 🌟 账号信息移至右上角胶囊
 role_badge = "👑 馆长" if IS_ADMIN else "👤 尊享会员"
 status_icon = "🔴 已过期" if is_expired else "🟢"
 exp_text = current_exp.strftime('%Y-%m-%d') if current_exp else "终身"
@@ -275,30 +265,6 @@ st.sidebar.markdown("## 🏛️ 工作台")
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
 page = st.sidebar.radio("导航", menu_options, index=default_idx, label_visibility="collapsed")
 st.session_state['nav_page'] = page 
-
-# 🌟 核心：二级目录折叠系统，仅在选择了“图书馆”时，在侧边栏渲染
-selected_lib_item = None
-if page == "📚 公共教材图书馆":
-    try:
-        lib_data_raw = supabase.table('public_library').select('*').execute().data
-        lib_data = [a for a in lib_data_raw if a.get('category') != "公共词库"] if lib_data_raw else []
-        if lib_data:
-            df_lib = pd.DataFrame(lib_data)
-            base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
-            db_cats = list(df_lib['category'].dropna().unique())
-            final_categories = [c for c in base_categories if c == "全部" or c in db_cats] + [c for c in db_cats if c not in base_categories]
-
-            with st.sidebar.expander("📖 展开图书目录", expanded=True):
-                cat_filter = st.selectbox("📂 选择分类", final_categories, label_visibility="collapsed")
-                filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
-                
-                if filtered_lib:
-                    options = [f"📄 {a.get('title', '')}" for a in filtered_lib]
-                    selected_title = st.sidebar.radio("篇目列表", options, label_visibility="collapsed", key="sidebar_toc")
-                    selected_lib_item = filtered_lib[options.index(selected_title)]
-                else:
-                    st.sidebar.info("当前分类暂无内容")
-    except Exception as e: pass
 
 st.sidebar.markdown("---")
 if st.sidebar.button("🚪 退出系统", use_container_width=True): 
@@ -386,69 +352,147 @@ if IS_SUPER_ADMIN and page == "👑 创始人控制台":
         except: pass
 
 # ==========================================
-# 📚 模块：公共教材图书馆 (沉浸式宽屏阅读)
+# 📚 模块：公共教材图书馆 (🌟 终极画廊书架与沉浸阅读模式)
 # ==========================================
 elif page == "📚 公共教材图书馆":
     
-    if IS_ADMIN:
-        base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
-        with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
-            lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
-            upload_method = st.radio("录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
-            lib_content = st.text_area("正文", height=100) if upload_method == "手动粘贴" else ""
-            if upload_method != "手动粘贴":
-                uploaded_file = st.file_uploader("选择文档", type=["pdf", "docx", "txt"])
-                if uploaded_file: lib_content = extract_text_from_file(uploaded_file); st.success("提取成功！")
-            if st.button("⬆️ 上传至公共书架", type="primary"):
-                if lib_title and lib_content.strip():
-                    supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.rerun()
+    # -- 状态机：记录当前正在阅读的书目 --
+    if 'reading_book_title' not in st.session_state:
+        st.session_state['reading_book_title'] = None
 
-    # 🌟 核心：右侧 100% 纯净阅读区 (目录已移交至侧边栏)
-    if selected_lib_item:
-        # 给阅读区巨大的空间比例 4:1.2
-        col_read, col_tools = st.columns([4, 1.2], gap="large")
+    base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
+    
+    # 获取数据库中的图书数据
+    lib_data = []
+    try:
+        lib_data_raw = supabase.table('public_library').select('*').execute().data
+        lib_data = [a for a in lib_data_raw if a.get('category') != "公共词库"] if lib_data_raw else []
+    except: pass
+
+    # 获取存在的分类
+    df_lib = pd.DataFrame(lib_data)
+    if not df_lib.empty:
+        db_cats = list(df_lib['category'].dropna().unique())
+        final_categories = [c for c in base_categories if c == "全部" or c in db_cats] + [c for c in db_cats if c not in base_categories]
+    else: final_categories = ["全部"]
+
+    # 🌟 侧边栏：分类选择器
+    st.sidebar.markdown("<h3 style='color: #8892B0; font-size: 1em; margin-bottom: 10px;'>📖 图书分类</h3>", unsafe_allow_html=True)
+    cat_filter = st.sidebar.selectbox("📂 选择分类", final_categories, label_visibility="collapsed")
+    
+    # 状态切换：如果分类变了，退回到书架网格
+    if 'prev_cat' not in st.session_state: st.session_state['prev_cat'] = cat_filter
+    if cat_filter != st.session_state['prev_cat']:
+        st.session_state['prev_cat'] = cat_filter
+        st.session_state['reading_book_title'] = None
+
+    filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
+
+    # ==========================
+    # 视图 A：书籍画廊网格模式
+    # ==========================
+    if st.session_state['reading_book_title'] is None:
         
-        with col_read:
-            st.markdown(f"#### {selected_lib_item.get('title')}")
-            clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
-            paper_bg = "#F5F7EC" 
-            # 屏幕高度自适应，极致护眼体验
-            st.markdown(f"<div style='background-color: {paper_bg}; padding: 35px 50px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.2em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
+        # 顶部：老板专属上传区域 (仅在书架模式显示)
+        if IS_ADMIN:
+            with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
+                lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
+                upload_method = st.radio("录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
+                lib_content = st.text_area("正文", height=100) if upload_method == "手动粘贴" else ""
+                if upload_method != "手动粘贴":
+                    uploaded_file = st.file_uploader("选择文档", type=["pdf", "docx", "txt"])
+                    if uploaded_file: lib_content = extract_text_from_file(uploaded_file); st.success("提取成功！")
+                if st.button("⬆️ 上传至公共书架", type="primary"):
+                    if lib_title and lib_content.strip():
+                        supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
+
+        st.markdown(f"### 📚 {cat_filter} 书架")
+        st.write("")
         
-        with col_tools:
-            st.markdown("#### 🛠️ 伴读助手")
-            tab_dict, tab_clip = st.tabs(["🔍 查词", "📝 摘抄"])
-            with tab_dict:
-                st.caption("复制左侧生词粘贴查阅")
-                lookup_word = st.text_input("输入英文生词", label_visibility="collapsed", placeholder="例如: consecutive", key="lib_word_input")
-                if st.button("💡 翻译并存库", type="primary", use_container_width=True, key="lib_btn_trans"):
-                    if lookup_word:
-                        with st.spinner("查词中..."):
-                            prompt = f"""分析单词: {lookup_word}。返回纯JSON: {{"word":"{lookup_word}","phonetic":"音标","translation":"精准中文释义","memory_tip":"一句精简的词根或联想记忆法","usage_examples":"一个简短实用的英文例句及中文","tags":"阅读生词"}}"""
-                            try:
-                                res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
-                                word_data = json.loads(res.choices[0].message.content)
-                                audio_url = f"https://dict.youdao.com/dictvoice?audio={urllib.parse.quote(word_data.get('word', ''))}&type=2"
-                                st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} <span class=\"audio-btn\" onclick=\"new Audio('{audio_url}').play()\" title=\"点击发音\">🔊</span><br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
-                                word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
-                            except: st.error("查词失败")
-            with tab_clip:
-                st.caption("复制左侧难句解析")
-                clip_sentence = st.text_area("输入句子", label_visibility="collapsed", height=100, placeholder="粘贴想精读的句子...", key="lib_clip_input")
-                if st.button("✍️ 解析并归档", type="primary", use_container_width=True, key="lib_btn_clip"):
-                    if clip_sentence:
-                        with st.spinner("解析中..."):
-                            prompt = f"""深度解析此句，返回JSON: {{"sentences":[{{"en":"{clip_sentence}","cn":"精美的翻译","syntax":"极简语法框架拆解","words":"核心词组解析"}}]}}"""
-                            try:
-                                res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
-                                clip_data = json.loads(res.choices[0].message.content); s = clip_data['sentences'][0]
-                                txt = f"[{1}] {s.get('en','')}\n译：{s.get('cn','')}\n🔍 语法：{s.get('syntax','')}\n💡 词法：{s.get('words','')}\n\n"
-                                supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": clip_sentence, "teaching_plan": txt, "translation": json.dumps(clip_data), "category": "摘抄好句"}).execute()
-                                st.success("✅ 已存至档案馆")
-                                st.markdown(f"<div style='font-size:0.9em; background:#F5F7EC; padding:10px; border-radius:5px; border:1px solid #D8DFD0;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
-                            except: st.error("解析失败")
+        if filtered_lib:
+            # 采用 5 列极致网格布局
+            cols = st.columns(5)
+            for i, book in enumerate(filtered_lib):
+                with cols[i % 5]:
+                    # 利用书名生成唯一哈希，从高清图库拉取固定且精美的图片作为封面
+                    title_hash = hashlib.md5(book['title'].encode()).hexdigest()[:8]
+                    tag_color = "#FF4B4B" if i % 3 == 0 else ("#00B4D8" if i % 2 == 0 else "#FFB703") # 随机彩色标签
+                    
+                    card_html = f"""
+                    <div style='background-color: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: -15px;'>
+                        <div style='position: relative; width: 100%; padding-top: 140%; border-radius: 4px; overflow: hidden; background: #eee;'>
+                            <img src='https://picsum.photos/seed/{title_hash}/400/550' style='position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;'>
+                            <div style='position: absolute; bottom: 15px; left: 0; background-color: {tag_color}; color: white; font-size: 0.75rem; font-weight: bold; padding: 8px 4px; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); border-radius: 0 4px 4px 0; box-shadow: 2px 0 5px rgba(0,0,0,0.2);'>
+                                {book.get('category')}
+                            </div>
+                        </div>
+                        <div style='margin-top: 10px; margin-bottom: 12px; text-align: center;'>
+                            <div style='font-weight: bold; font-size: 0.95em; color: #1A1A24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "Times New Roman", serif;'>{book.get('title')}</div>
+                            <div style='font-size: 0.75em; color: #8892B0; margin-top: 2px;'>Word Count: {len(book.get('content','').split())}</div>
+                        </div>
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
+                    # 每本书下面的阅读按钮
+                    if st.button("📖 立即阅读", key=f"read_{book['id']}", use_container_width=True):
+                        st.session_state['reading_book_title'] = book['title']
+                        st.rerun()
+        else:
+            st.info("💡 当前分类下暂无教材，等待馆长上新！")
+
+    # ==========================
+    # 视图 B：沉浸宽屏阅读模式
+    # ==========================
     else:
-        st.info("👈 请在左侧边栏展开【📖 图书目录】选择篇目。")
+        selected_lib_item = next((b for b in lib_data if b['title'] == st.session_state['reading_book_title']), None)
+        
+        if selected_lib_item:
+            # 顶部返回按钮
+            if st.button("⬅️ 返回书架", type="primary"):
+                st.session_state['reading_book_title'] = None
+                st.rerun()
+            
+            # 宽阔阅读区 4:1.2 比例
+            col_read, col_tools = st.columns([4, 1.2], gap="large")
+            
+            with col_read:
+                st.markdown(f"#### {selected_lib_item.get('title')}")
+                clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
+                paper_bg = "#F5F7EC" 
+                st.markdown(f"<div style='background-color: {paper_bg}; padding: 35px 50px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.2em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
+            
+            with col_tools:
+                st.markdown("#### 🛠️ 伴读助手")
+                tab_dict, tab_clip = st.tabs(["🔍 查词", "📝 摘抄"])
+                with tab_dict:
+                    st.caption("复制左侧生词粘贴查阅")
+                    lookup_word = st.text_input("输入英文生词", label_visibility="collapsed", placeholder="例如: consecutive", key="lib_word_input")
+                    if st.button("💡 翻译并存库", type="primary", use_container_width=True, key="lib_btn_trans"):
+                        if lookup_word:
+                            with st.spinner("查词中..."):
+                                prompt = f"""分析单词: {lookup_word}。返回纯JSON: {{"word":"{lookup_word}","phonetic":"音标","translation":"精准中文释义","memory_tip":"一句精简的词根或联想记忆法","usage_examples":"一个简短实用的英文例句及中文","tags":"阅读生词"}}"""
+                                try:
+                                    res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
+                                    word_data = json.loads(res.choices[0].message.content)
+                                    audio_url = f"https://dict.youdao.com/dictvoice?audio={urllib.parse.quote(word_data.get('word', ''))}&type=2"
+                                    st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} <span class=\"audio-btn\" onclick=\"new Audio('{audio_url}').play()\" title=\"点击发音\">🔊</span><br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
+                                    word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
+                                except: st.error("查词失败")
+                with tab_clip:
+                    st.caption("复制左侧难句解析")
+                    clip_sentence = st.text_area("输入句子", label_visibility="collapsed", height=100, placeholder="粘贴想精读的句子...", key="lib_clip_input")
+                    if st.button("✍️ 解析并归档", type="primary", use_container_width=True, key="lib_btn_clip"):
+                        if clip_sentence:
+                            with st.spinner("解析中..."):
+                                prompt = f"""深度解析此句，返回JSON: {{"sentences":[{{"en":"{clip_sentence}","cn":"精美的翻译","syntax":"极简语法框架拆解","words":"核心词组解析"}}]}}"""
+                                try:
+                                    res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
+                                    clip_data = json.loads(res.choices[0].message.content); s = clip_data['sentences'][0]
+                                    txt = f"[{1}] {s.get('en','')}\n译：{s.get('cn','')}\n🔍 语法：{s.get('syntax','')}\n💡 词法：{s.get('words','')}\n\n"
+                                    supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": clip_sentence, "teaching_plan": txt, "translation": json.dumps(clip_data), "category": "摘抄好句"}).execute()
+                                    st.success("✅ 已存至档案馆")
+                                    st.markdown(f"<div style='font-size:0.9em; background:#F5F7EC; padding:10px; border-radius:5px; border:1px solid #D8DFD0;'><b>译：</b>{s.get('cn')}<br><br><b>语法：</b>{s.get('syntax')}</div>", unsafe_allow_html=True)
+                                except: st.error("解析失败")
 
 # ==========================================
 # 🔍 模块：教研室
