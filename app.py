@@ -9,6 +9,7 @@ import string
 import re
 import hashlib
 import urllib.parse
+import base64
 import extra_streamlit_components as esc
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -45,67 +46,59 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致全屏顶导视觉系统 (终极进化版)
+# 🎨 UI/UX 极致全屏顶导视觉系统 (极限瘦身版)
 # ==========================================
-# 强制收起并隐藏原生侧边栏
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
 
 custom_css = """
 <style>
-    /* 1. 物理级抹杀侧边栏及其控制按钮 */
+    /* 1. 物理级抹杀侧边栏 */
     [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebar"] { display: none !important; }
     
-    /* 2. 极限优化主屏边距 */
-    .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; margin-top: 0 !important; max-width: 95% !important;}
-    [data-testid="stAppViewBlockContainer"] { padding-top: 1.5rem !important; }
+    /* 🌟 2. 极限压缩顶部留白！强制归零 */
+    .block-container { padding-top: 0rem !important; padding-bottom: 1rem !important; margin-top: -1rem !important; max-width: 95% !important;}
+    [data-testid="stAppViewBlockContainer"] { padding-top: 0rem !important; }
     [data-testid="stHeader"] { display: none !important; height: 0 !important; }
-    .stHeadingContainer { margin-top: -1.5rem !important; }
+    .stHeadingContainer { margin-top: -2rem !important; }
     
-    h1 { font-size: 1.8rem !important; margin-top: -1rem !important; padding-bottom: 15px !important; }
-    h2 { font-size: 1.4rem !important; }
-    h3 { font-size: 1.2rem !important; }
-    h4 { font-size: 1.1rem !important; }
-    h5 { font-size: 1.05rem !important; }
+    /* 字体整体调小一号，更加精致 */
+    h1 { font-size: 1.6rem !important; margin-top: -1rem !important; padding-bottom: 10px !important; }
+    h2 { font-size: 1.3rem !important; }
+    h3 { font-size: 1.1rem !important; }
+    h4 { font-size: 1.05rem !important; }
+    h5 { font-size: 1rem !important; }
 
-    /* 3. 护眼大背景 */
+    /* 护眼大背景 */
     .stApp { background-color: #EBF0E5 !important; }
     h1, h2, h3, h4, h5, p, span { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; }
     
-    /* 🌟 4. 核心：将所有单选框(Radio)彻底重构成现代化胶囊按钮(Pills) */
-    div.row-widget.stRadio > div { flex-direction: row; gap: 12px; flex-wrap: wrap; }
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; } /* 隐藏原生圆点 */
+    /* 胶囊导航栏收窄 */
+    div.row-widget.stRadio > div { flex-direction: row; gap: 8px; flex-wrap: wrap; margin-top: 5px;}
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; } 
     div[role="radiogroup"] label[data-baseweb="radio"] { 
-        padding: 8px 22px !important; 
-        border-radius: 50px !important; /* 极致圆角胶囊 */
+        padding: 4px 16px !important; 
+        border-radius: 50px !important; 
         background-color: transparent !important;
         border: 1px solid #C5D1B8 !important;
         cursor: pointer;
         margin: 0 !important;
         transition: all 0.2s ease;
     }
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { 
-        margin-left: 0 !important; width: 100%; text-align: center; 
-    }
-    div[role="radiogroup"] label[data-baseweb="radio"] p { color: #556070 !important; font-size: 0.95em !important; margin: 0 !important;}
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { margin-left: 0 !important; width: 100%; text-align: center; }
+    /* 导航文字瘦身 */
+    div[role="radiogroup"] label[data-baseweb="radio"] p { color: #556070 !important; font-size: 0.85em !important; margin: 0 !important;}
     
-    /* 胶囊悬浮与选中状态 */
     div[role="radiogroup"] label[data-baseweb="radio"]:hover { background-color: #DFE6D8 !important; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
-    div[role="radiogroup"] label[data-baseweb="radio"][data-checked="true"] { 
-        background-color: #1A1A24 !important; 
-        border-color: #1A1A24 !important; 
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
+    div[role="radiogroup"] label[data-baseweb="radio"][data-checked="true"] { background-color: #1A1A24 !important; border-color: #1A1A24 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     div[role="radiogroup"] label[data-baseweb="radio"][data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
 
-    /* 通用按钮美化 */
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     .stTextInput input, .stTextArea textarea, .stSelectbox > div > div { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
     
-    /* Tabs 标签美化 */
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
-    div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.95em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
+    div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.9em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
     
     .audio-btn { cursor: pointer; margin-left: 8px; font-size: 1.15em; transition: all 0.2s ease; display: inline-block; }
     .audio-btn:hover { transform: scale(1.3); text-shadow: 0 2px 5px rgba(0,0,0,0.15); }
@@ -167,10 +160,19 @@ def extract_text_from_file(uploaded_file):
         return "\n".join([para.text for para in Document(uploaded_file).paragraphs])
     return ""
 
+# 🌟 核心修复：更优雅的阅读排版，剔除多余空行，保持完美间距
 def format_reading_text(text):
-    cleaned = text.replace('\r\n', '\n').replace('\n\n', '§§§')
+    # 把两个及以上的回车统一替换成一个特殊标记
+    cleaned = re.sub(r'\n\s*\n', '§§§', text)
+    # 把单回车(可能是PDF截断)替换成空格
     cleaned = cleaned.replace('\n', ' ')
-    return cleaned.replace('§§§', '<br><br>')
+    # 重新分割成段落
+    paragraphs = [p.strip() for p in cleaned.split('§§§') if p.strip()]
+    html = ""
+    for p in paragraphs:
+        # 只保留 10px 的微小段落间距，消除巨大的空白感
+        html += f"<div style='margin-bottom: 10px;'>{p}</div>"
+    return html
 
 def export_styled_excel(df):
     output = io.BytesIO()
@@ -279,28 +281,25 @@ if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台")
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
 default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
 
-# 构建顶栏结构：左侧菜单，右侧账号与退出
-col_nav, col_info, col_logout = st.columns([6, 2.5, 1], gap="medium")
+col_nav, col_info, col_logout = st.columns([6, 2.5, 0.8], gap="medium")
 
 with col_nav:
-    # 使用重构后的胶囊 Radio 作为主导航
     page = st.radio("主导航", menu_options, index=default_idx, horizontal=True, label_visibility="collapsed")
     st.session_state['nav_page'] = page 
 
 with col_info:
-    role_badge = "👑 馆长" if IS_ADMIN else "👤 尊享会员"
-    status_icon = "🔴 过期" if is_expired else "🟢"
+    role_badge = "👑 馆长" if IS_ADMIN else "👤 会员"
+    status_icon = "🔴" if is_expired else "🟢"
     exp_text = current_exp.strftime('%Y-%m-%d') if current_exp else "终身"
-    # 账号信息与到期日优雅地靠右显示
-    st.markdown(f"<div style='text-align: right; padding-top: 10px; color: #556070; font-size: 0.95em;'>{role_badge} <b>{USER_EMAIL}</b> &nbsp;|&nbsp; {status_icon} {exp_text}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: right; padding-top: 15px; color: #556070; font-size: 0.85em;'>{role_badge} <b>{USER_EMAIL}</b> &nbsp;|&nbsp; {status_icon} {exp_text}</div>", unsafe_allow_html=True)
 
 with col_logout:
-    if st.button("🚪 退出系统", use_container_width=True): 
+    st.write("")
+    if st.button("🚪 退出", use_container_width=True): 
         cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
         st.session_state['user'] = None; st.rerun()
 
-# 导航栏下方的精美分割线
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0; border-top: 1px solid #D8DFD0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin-top: 0px; margin-bottom: 15px; border: 0; border-top: 1px solid #D8DFD0;'>", unsafe_allow_html=True)
 
 
 # ==========================================
@@ -378,7 +377,7 @@ if IS_SUPER_ADMIN and page == "👑 创始人控制台":
         except: pass
 
 # ==========================================
-# 📚 模块：公共教材图书馆 (🌟 全屏画廊与沉浸阅读)
+# 📚 模块：公共教材图书馆 (🌟 支持自定义封面)
 # ==========================================
 elif page == "📚 公共教材图书馆":
     
@@ -407,41 +406,60 @@ elif page == "📚 公共教材图书馆":
         if IS_ADMIN:
             with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
                 lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
-                upload_method = st.radio("录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
+                # 🌟 新增：封面图片上传器
+                cover_file = st.file_uploader("🖼️ 上传自定义封面 (可选, 不传则自动生成绝美图片)", type=["png", "jpg", "jpeg"])
+                
+                upload_method = st.radio("正文录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
                 lib_content = st.text_area("正文", height=100) if upload_method == "手动粘贴" else ""
                 if upload_method != "手动粘贴":
-                    uploaded_file = st.file_uploader("选择文档", type=["pdf", "docx", "txt"])
+                    uploaded_file = st.file_uploader("选择纯文本/PDF/Word文档", type=["pdf", "docx", "txt"])
                     if uploaded_file: lib_content = extract_text_from_file(uploaded_file); st.success("提取成功！")
+                
                 if st.button("⬆️ 上传至公共书架", type="primary"):
                     if lib_title and lib_content.strip():
-                        supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
+                        # 处理自定义封面
+                        cover_b64 = ""
+                        if cover_file:
+                            cover_b64 = "data:image/jpeg;base64," + base64.b64encode(cover_file.read()).decode()
+                        
+                        # 兼容老表结构，如果用户还没加 cover_image 字段，防止报错
+                        try:
+                            supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content, "cover_image": cover_b64}).execute()
+                        except:
+                            supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute()
+                            
+                        st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
 
-        # 🌟 二级目录：分类胶囊按钮，折叠在页面顶部
-        st.markdown("<h4 style='color:#1F4E79; margin-bottom: 10px;'>📖 书架分类</h4>", unsafe_allow_html=True)
+        # 二级目录胶囊分类
         cat_filter = st.radio("分类", final_categories, horizontal=True, label_visibility="collapsed", key="cat_radio")
         st.write("---")
 
         filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
         
         if filtered_lib:
-            # 去除侧边栏后，主屏幕横向空间极大，开启 6 列画廊展示
             cols = st.columns(6)
             for i, book in enumerate(filtered_lib):
                 with cols[i % 6]:
-                    title_hash = hashlib.md5(book['title'].encode()).hexdigest()[:8]
+                    # 🌟 修复：检查是否上传了自定义封面
+                    cover_img_src = book.get('cover_image')
+                    if not cover_img_src:
+                        title_hash = hashlib.md5(book['title'].encode()).hexdigest()[:8]
+                        cover_img_src = f'https://picsum.photos/seed/{title_hash}/400/550'
+                    
                     tag_color = "#FF4B4B" if i % 3 == 0 else ("#00B4D8" if i % 2 == 0 else "#FFB703") 
                     
+                    # 🌟 修复：修正侧边标签排版，彻底解决倒置问题！
                     card_html = f"""
                     <div style='background-color: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: -15px;'>
                         <div style='position: relative; width: 100%; padding-top: 140%; border-radius: 4px; overflow: hidden; background: #eee;'>
-                            <img src='https://picsum.photos/seed/{title_hash}/400/550' style='position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;'>
-                            <div style='position: absolute; bottom: 15px; left: 0; background-color: {tag_color}; color: white; font-size: 0.75rem; font-weight: bold; padding: 8px 4px; writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); border-radius: 0 4px 4px 0; box-shadow: 2px 0 5px rgba(0,0,0,0.2);'>
+                            <img src='{cover_img_src}' style='position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;'>
+                            <div style='position: absolute; bottom: 15px; left: 0; background-color: {tag_color}; color: white; font-size: 0.75rem; font-weight: bold; padding: 8px 4px; writing-mode: vertical-lr; text-orientation: upright; letter-spacing: 2px; border-radius: 0 4px 4px 0; box-shadow: 2px 0 5px rgba(0,0,0,0.2);'>
                                 {book.get('category')}
                             </div>
                         </div>
                         <div style='margin-top: 10px; margin-bottom: 12px; text-align: center;'>
-                            <div style='font-weight: bold; font-size: 0.95em; color: #1A1A24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "Times New Roman", serif;'>{book.get('title')}</div>
-                            <div style='font-size: 0.75em; color: #8892B0; margin-top: 2px;'>Word Count: {len(book.get('content','').split())}</div>
+                            <div style='font-weight: bold; font-size: 0.9em; color: #1A1A24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "Times New Roman", serif;'>{book.get('title')}</div>
+                            <div style='font-size: 0.7em; color: #8892B0; margin-top: 2px;'>Word Count: {len(book.get('content','').split())}</div>
                         </div>
                     </div>
                     """
@@ -453,7 +471,7 @@ elif page == "📚 公共教材图书馆":
             st.info("💡 当前分类下暂无教材，等待馆长上新！")
 
     # ==========================
-    # 视图 B：全宽沉浸阅读模式
+    # 视图 B：全宽沉浸阅读模式 (字号收紧)
     # ==========================
     else:
         selected_lib_item = next((b for b in lib_data if b['title'] == st.session_state['reading_book_title']), None)
@@ -463,14 +481,14 @@ elif page == "📚 公共教材图书馆":
                 st.session_state['reading_book_title'] = None
                 st.rerun()
             
-            # 全屏宽度下的黄金比例分配
             col_read, col_tools = st.columns([5, 1.5], gap="large")
             
             with col_read:
                 st.markdown(f"#### {selected_lib_item.get('title')}")
                 clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
                 paper_bg = "#F5F7EC" 
-                st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.2em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
+                # 🌟 字号从 1.2em 缩小至 1.05em，更加精致
+                st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.05em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
             
             with col_tools:
                 st.markdown("#### 🛠️ 伴读助手")
