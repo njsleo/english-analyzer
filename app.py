@@ -46,7 +46,7 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致全屏顶导视觉系统 (极限瘦身版)
+# 🎨 UI/UX 极致全屏顶导视觉系统 (字体冲突修复版)
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
 
@@ -56,7 +56,7 @@ custom_css = """
     [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebar"] { display: none !important; }
     
-    /* 🌟 2. 极限压缩顶部留白！强制归零 */
+    /* 2. 极限压缩顶部留白！强制归零 */
     .block-container { padding-top: 0rem !important; padding-bottom: 1rem !important; margin-top: -1rem !important; max-width: 95% !important;}
     [data-testid="stAppViewBlockContainer"] { padding-top: 0rem !important; }
     [data-testid="stHeader"] { display: none !important; height: 0 !important; }
@@ -71,7 +71,10 @@ custom_css = """
 
     /* 护眼大背景 */
     .stApp { background-color: #EBF0E5 !important; }
-    h1, h2, h3, h4, h5, p, span { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; }
+    
+    /* 🌟 核心修复：只修改标题字体，取消 span 的强制覆盖，解决下拉箭头和上传按钮的乱码冲突！ */
+    h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
+    p { color: #1A1A24; }
     
     /* 胶囊导航栏收窄 */
     div.row-widget.stRadio > div { flex-direction: row; gap: 8px; flex-wrap: wrap; margin-top: 5px;}
@@ -160,18 +163,12 @@ def extract_text_from_file(uploaded_file):
         return "\n".join([para.text for para in Document(uploaded_file).paragraphs])
     return ""
 
-# 🌟 核心修复：更优雅的阅读排版，剔除多余空行，保持完美间距
 def format_reading_text(text):
-    # 把两个及以上的回车统一替换成一个特殊标记
     cleaned = re.sub(r'\n\s*\n', '§§§', text)
-    # 把单回车(可能是PDF截断)替换成空格
     cleaned = cleaned.replace('\n', ' ')
-    # 重新分割成段落
     paragraphs = [p.strip() for p in cleaned.split('§§§') if p.strip()]
     html = ""
-    for p in paragraphs:
-        # 只保留 10px 的微小段落间距，消除巨大的空白感
-        html += f"<div style='margin-bottom: 10px;'>{p}</div>"
+    for p in paragraphs: html += f"<div style='margin-bottom: 10px;'>{p}</div>"
     return html
 
 def export_styled_excel(df):
@@ -273,7 +270,7 @@ if not IS_SUPER_ADMIN and is_expired:
     st.stop()
 
 # ==========================================
-# 🌟 全新顶部全局导航栏 (Top Navbar)
+# 🌟 全新顶部全局导航栏
 # ==========================================
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
 if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
@@ -300,7 +297,6 @@ with col_logout:
         st.session_state['user'] = None; st.rerun()
 
 st.markdown("<hr style='margin-top: 0px; margin-bottom: 15px; border: 0; border-top: 1px solid #D8DFD0;'>", unsafe_allow_html=True)
-
 
 # ==========================================
 # 👑 模块：创始人控制台
@@ -377,7 +373,7 @@ if IS_SUPER_ADMIN and page == "👑 创始人控制台":
         except: pass
 
 # ==========================================
-# 📚 模块：公共教材图书馆 (🌟 支持自定义封面)
+# 📚 模块：公共教材图书馆
 # ==========================================
 elif page == "📚 公共教材图书馆":
     
@@ -406,7 +402,6 @@ elif page == "📚 公共教材图书馆":
         if IS_ADMIN:
             with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
                 lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
-                # 🌟 新增：封面图片上传器
                 cover_file = st.file_uploader("🖼️ 上传自定义封面 (可选, 不传则自动生成绝美图片)", type=["png", "jpg", "jpeg"])
                 
                 upload_method = st.radio("正文录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
@@ -417,20 +412,16 @@ elif page == "📚 公共教材图书馆":
                 
                 if st.button("⬆️ 上传至公共书架", type="primary"):
                     if lib_title and lib_content.strip():
-                        # 处理自定义封面
                         cover_b64 = ""
                         if cover_file:
                             cover_b64 = "data:image/jpeg;base64," + base64.b64encode(cover_file.read()).decode()
-                        
-                        # 兼容老表结构，如果用户还没加 cover_image 字段，防止报错
                         try:
                             supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content, "cover_image": cover_b64}).execute()
                         except:
                             supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute()
-                            
                         st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
 
-        # 二级目录胶囊分类
+        st.markdown("<h4 style='color:#1F4E79; margin-bottom: 10px;'>📖 书架分类</h4>", unsafe_allow_html=True)
         cat_filter = st.radio("分类", final_categories, horizontal=True, label_visibility="collapsed", key="cat_radio")
         st.write("---")
 
@@ -440,7 +431,6 @@ elif page == "📚 公共教材图书馆":
             cols = st.columns(6)
             for i, book in enumerate(filtered_lib):
                 with cols[i % 6]:
-                    # 🌟 修复：检查是否上传了自定义封面
                     cover_img_src = book.get('cover_image')
                     if not cover_img_src:
                         title_hash = hashlib.md5(book['title'].encode()).hexdigest()[:8]
@@ -448,7 +438,6 @@ elif page == "📚 公共教材图书馆":
                     
                     tag_color = "#FF4B4B" if i % 3 == 0 else ("#00B4D8" if i % 2 == 0 else "#FFB703") 
                     
-                    # 🌟 修复：修正侧边标签排版，彻底解决倒置问题！
                     card_html = f"""
                     <div style='background-color: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: -15px;'>
                         <div style='position: relative; width: 100%; padding-top: 140%; border-radius: 4px; overflow: hidden; background: #eee;'>
@@ -471,24 +460,32 @@ elif page == "📚 公共教材图书馆":
             st.info("💡 当前分类下暂无教材，等待馆长上新！")
 
     # ==========================
-    # 视图 B：全宽沉浸阅读模式 (字号收紧)
+    # 视图 B：全宽沉浸阅读模式 (🌟 动态字号版)
     # ==========================
     else:
         selected_lib_item = next((b for b in lib_data if b['title'] == st.session_state['reading_book_title']), None)
         
         if selected_lib_item:
-            if st.button("⬅️ 返回书架", type="primary"):
-                st.session_state['reading_book_title'] = None
-                st.rerun()
+            # 🌟 新增：优雅的返回按钮与动态字号调节器
+            c_back, c_space, c_font = st.columns([1.5, 5, 2.5])
+            with c_back:
+                if st.button("⬅️ 返回书架", type="primary"):
+                    st.session_state['reading_book_title'] = None
+                    st.rerun()
+            with c_font:
+                # 使用胶囊样式的 Radio 按钮来控制字号
+                font_opt = st.radio("阅读字号", ["标准", "放大", "特大"], horizontal=True, index=0, label_visibility="collapsed")
+                font_map = {"标准": "1.05em", "放大": "1.25em", "特大": "1.45em"}
+                current_fs = font_map[font_opt]
             
-            col_read, col_tools = st.columns([5, 1.5], gap="large")
+            col_read, col_tools = st.columns([4.5, 1.5], gap="large")
             
             with col_read:
                 st.markdown(f"#### {selected_lib_item.get('title')}")
                 clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
                 paper_bg = "#F5F7EC" 
-                # 🌟 字号从 1.2em 缩小至 1.05em，更加精致
-                st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.05em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
+                # 🌟 将用户选定的字号 current_fs 注入到阅读区 CSS 中
+                st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: {current_fs}; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: font-size 0.3s ease;'>{clean_html_text}</div>", unsafe_allow_html=True)
             
             with col_tools:
                 st.markdown("#### 🛠️ 伴读助手")
