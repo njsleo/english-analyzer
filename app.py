@@ -45,14 +45,20 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致视觉系统与画廊书架样式
+# 🎨 UI/UX 极致全屏顶导视觉系统 (终极进化版)
 # ==========================================
-st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide")
+# 强制收起并隐藏原生侧边栏
+st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
 
 custom_css = """
 <style>
-    .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; margin-top: 0 !important; }
-    [data-testid="stAppViewBlockContainer"] { padding-top: 1rem !important; }
+    /* 1. 物理级抹杀侧边栏及其控制按钮 */
+    [data-testid="collapsedControl"] { display: none !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+    
+    /* 2. 极限优化主屏边距 */
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; margin-top: 0 !important; max-width: 95% !important;}
+    [data-testid="stAppViewBlockContainer"] { padding-top: 1.5rem !important; }
     [data-testid="stHeader"] { display: none !important; height: 0 !important; }
     .stHeadingContainer { margin-top: -1.5rem !important; }
     
@@ -62,30 +68,42 @@ custom_css = """
     h4 { font-size: 1.1rem !important; }
     h5 { font-size: 1.05rem !important; }
 
+    /* 3. 护眼大背景 */
     .stApp { background-color: #EBF0E5 !important; }
-    h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
+    h1, h2, h3, h4, h5, p, span { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; }
     
-    /* 单选框美化 */
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; }
-    div[role="radiogroup"] label[data-baseweb="radio"] { padding-left: 0 !important; }
-    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { margin-left: 0 !important; width: 100%; }
+    /* 🌟 4. 核心：将所有单选框(Radio)彻底重构成现代化胶囊按钮(Pills) */
+    div.row-widget.stRadio > div { flex-direction: row; gap: 12px; flex-wrap: wrap; }
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; } /* 隐藏原生圆点 */
+    div[role="radiogroup"] label[data-baseweb="radio"] { 
+        padding: 8px 22px !important; 
+        border-radius: 50px !important; /* 极致圆角胶囊 */
+        background-color: transparent !important;
+        border: 1px solid #C5D1B8 !important;
+        cursor: pointer;
+        margin: 0 !important;
+        transition: all 0.2s ease;
+    }
+    div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { 
+        margin-left: 0 !important; width: 100%; text-align: center; 
+    }
+    div[role="radiogroup"] label[data-baseweb="radio"] p { color: #556070 !important; font-size: 0.95em !important; margin: 0 !important;}
+    
+    /* 胶囊悬浮与选中状态 */
+    div[role="radiogroup"] label[data-baseweb="radio"]:hover { background-color: #DFE6D8 !important; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+    div[role="radiogroup"] label[data-baseweb="radio"][data-checked="true"] { 
+        background-color: #1A1A24 !important; 
+        border-color: #1A1A24 !important; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    div[role="radiogroup"] label[data-baseweb="radio"][data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
 
-    /* 侧边栏美化 */
-    section[data-testid="stSidebar"] { min-width: 220px !important; max-width: 220px !important; background-color: #111118 !important; border-right: 1px solid #2D2D3B; }
-    section[data-testid="stSidebar"] h2 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #FFFFFF !important; font-size: 1.1em !important; text-align: center; margin-top: -30px; margin-bottom: 20px; }
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label { background-color: transparent !important; padding: 10px 12px !important; border-radius: 6px !important; margin: 2px 0 !important; border: none !important; cursor: pointer; }
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label p { color: #8892B0 !important; font-size: 0.9em !important; }
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover { background-color: #202535 !important; }
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] { background-color: #1a1e2a !important; border-left: 3px solid #00B4D8 !important; }
-    section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p { color: #FFFFFF !important; font-weight: bold !important; }
-    section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background-color: #1A1E2A !important; border: 1px solid #2D2D3B !important; color: #8892B0 !important; border-radius: 6px !important;}
-    section[data-testid="stSidebar"] div[data-baseweb="select"] span { color: #8892B0 !important; }
-
-    /* 按钮美化 */
+    /* 通用按钮美化 */
     div.stButton > button { border-radius: 6px !important; font-weight: 600 !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: all 0.2s ease; }
     div.stButton > button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     .stTextInput input, .stTextArea textarea, .stSelectbox > div > div { border-radius: 6px !important; border: 1px solid #D8DFD0 !important; background-color: #F5F7EC !important; color: #2C3E50 !important;}
     
+    /* Tabs 标签美化 */
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
     div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.95em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
     
@@ -244,43 +262,51 @@ else:
 
 IS_ADMIN = IS_SUPER_ADMIN or (user_role == 'admin')
 
-# 🌟 账号信息移至右上角胶囊
-role_badge = "👑 馆长" if IS_ADMIN else "👤 尊享会员"
-status_icon = "🔴 已过期" if is_expired else "🟢"
-exp_text = current_exp.strftime('%Y-%m-%d') if current_exp else "终身"
-st.markdown(f"""
-    <div style="position: fixed; top: 16px; right: 20px; z-index: 99999; font-size: 0.8em; color: #4A5568; background-color: #F8FAF6; padding: 6px 16px; border-radius: 50px; border: 1px solid #D8DFD0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px;">
-        <span>{role_badge} <b>{USER_EMAIL}</b></span>
-        <span style="color: #D8DFD0;">|</span>
-        <span>{status_icon} {exp_text}</span>
-    </div>
-""", unsafe_allow_html=True)
-
-# ----------------- 导航栏构建 -----------------
-if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
-menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
-if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
-
-st.sidebar.markdown("## 🏛️ 工作台")
-default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
-page = st.sidebar.radio("导航", menu_options, index=default_idx, label_visibility="collapsed")
-st.session_state['nav_page'] = page 
-
-st.sidebar.markdown("---")
-if st.sidebar.button("🚪 退出系统", use_container_width=True): 
-    cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
-    st.session_state['user'] = None; st.rerun()
-
 if not IS_SUPER_ADMIN and is_expired:
     st.warning("⚠️ 您的 VIP 授权已到期，系统已暂停您的操作权限。")
     st.info(f"👉 您的账号资料已安全锁定。请联系管理员微信 **{CONTACT_WECHAT}** 进行续费激活，解锁全部权限！")
+    if st.button("🚪 退出系统"): 
+        cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
+        st.session_state['user'] = None; st.rerun()
     st.stop()
+
+# ==========================================
+# 🌟 全新顶部全局导航栏 (Top Navbar)
+# ==========================================
+menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
+if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
+
+if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
+default_idx = menu_options.index(st.session_state['nav_page']) if st.session_state['nav_page'] in menu_options else 0
+
+# 构建顶栏结构：左侧菜单，右侧账号与退出
+col_nav, col_info, col_logout = st.columns([6, 2.5, 1], gap="medium")
+
+with col_nav:
+    # 使用重构后的胶囊 Radio 作为主导航
+    page = st.radio("主导航", menu_options, index=default_idx, horizontal=True, label_visibility="collapsed")
+    st.session_state['nav_page'] = page 
+
+with col_info:
+    role_badge = "👑 馆长" if IS_ADMIN else "👤 尊享会员"
+    status_icon = "🔴 过期" if is_expired else "🟢"
+    exp_text = current_exp.strftime('%Y-%m-%d') if current_exp else "终身"
+    # 账号信息与到期日优雅地靠右显示
+    st.markdown(f"<div style='text-align: right; padding-top: 10px; color: #556070; font-size: 0.95em;'>{role_badge} <b>{USER_EMAIL}</b> &nbsp;|&nbsp; {status_icon} {exp_text}</div>", unsafe_allow_html=True)
+
+with col_logout:
+    if st.button("🚪 退出系统", use_container_width=True): 
+        cookie_manager.delete("saved_email"); cookie_manager.delete("saved_uid"); cookie_manager.delete("saved_sign")
+        st.session_state['user'] = None; st.rerun()
+
+# 导航栏下方的精美分割线
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border: 0; border-top: 1px solid #D8DFD0;'>", unsafe_allow_html=True)
+
 
 # ==========================================
 # 👑 模块：创始人控制台
 # ==========================================
 if IS_SUPER_ADMIN and page == "👑 创始人控制台":
-    st.title("👑 创始人全能控制台")
     tab_gen, tab_users, tab_codes = st.tabs(["🎟️ 激活码生成", "👥 用户管理 & 授权", "📋 激活码查账明细"])
     
     with tab_gen:
@@ -352,48 +378,32 @@ if IS_SUPER_ADMIN and page == "👑 创始人控制台":
         except: pass
 
 # ==========================================
-# 📚 模块：公共教材图书馆 (🌟 终极画廊书架与沉浸阅读模式)
+# 📚 模块：公共教材图书馆 (🌟 全屏画廊与沉浸阅读)
 # ==========================================
 elif page == "📚 公共教材图书馆":
     
-    # -- 状态机：记录当前正在阅读的书目 --
     if 'reading_book_title' not in st.session_state:
         st.session_state['reading_book_title'] = None
 
     base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
     
-    # 获取数据库中的图书数据
     lib_data = []
     try:
         lib_data_raw = supabase.table('public_library').select('*').execute().data
         lib_data = [a for a in lib_data_raw if a.get('category') != "公共词库"] if lib_data_raw else []
     except: pass
 
-    # 获取存在的分类
     df_lib = pd.DataFrame(lib_data)
     if not df_lib.empty:
         db_cats = list(df_lib['category'].dropna().unique())
         final_categories = [c for c in base_categories if c == "全部" or c in db_cats] + [c for c in db_cats if c not in base_categories]
     else: final_categories = ["全部"]
 
-    # 🌟 侧边栏：分类选择器
-    st.sidebar.markdown("<h3 style='color: #8892B0; font-size: 1em; margin-bottom: 10px;'>📖 图书分类</h3>", unsafe_allow_html=True)
-    cat_filter = st.sidebar.selectbox("📂 选择分类", final_categories, label_visibility="collapsed")
-    
-    # 状态切换：如果分类变了，退回到书架网格
-    if 'prev_cat' not in st.session_state: st.session_state['prev_cat'] = cat_filter
-    if cat_filter != st.session_state['prev_cat']:
-        st.session_state['prev_cat'] = cat_filter
-        st.session_state['reading_book_title'] = None
-
-    filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
-
     # ==========================
     # 视图 A：书籍画廊网格模式
     # ==========================
     if st.session_state['reading_book_title'] is None:
         
-        # 顶部：老板专属上传区域 (仅在书架模式显示)
         if IS_ADMIN:
             with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
                 lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
@@ -406,17 +416,20 @@ elif page == "📚 公共教材图书馆":
                     if lib_title and lib_content.strip():
                         supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute(); st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
 
-        st.markdown(f"### 📚 {cat_filter} 书架")
-        st.write("")
+        # 🌟 二级目录：分类胶囊按钮，折叠在页面顶部
+        st.markdown("<h4 style='color:#1F4E79; margin-bottom: 10px;'>📖 书架分类</h4>", unsafe_allow_html=True)
+        cat_filter = st.radio("分类", final_categories, horizontal=True, label_visibility="collapsed", key="cat_radio")
+        st.write("---")
+
+        filtered_lib = [a for a in lib_data if a.get('category') == cat_filter] if cat_filter != "全部" else lib_data
         
         if filtered_lib:
-            # 采用 5 列极致网格布局
-            cols = st.columns(5)
+            # 去除侧边栏后，主屏幕横向空间极大，开启 6 列画廊展示
+            cols = st.columns(6)
             for i, book in enumerate(filtered_lib):
-                with cols[i % 5]:
-                    # 利用书名生成唯一哈希，从高清图库拉取固定且精美的图片作为封面
+                with cols[i % 6]:
                     title_hash = hashlib.md5(book['title'].encode()).hexdigest()[:8]
-                    tag_color = "#FF4B4B" if i % 3 == 0 else ("#00B4D8" if i % 2 == 0 else "#FFB703") # 随机彩色标签
+                    tag_color = "#FF4B4B" if i % 3 == 0 else ("#00B4D8" if i % 2 == 0 else "#FFB703") 
                     
                     card_html = f"""
                     <div style='background-color: #fff; border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: -15px;'>
@@ -433,7 +446,6 @@ elif page == "📚 公共教材图书馆":
                     </div>
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
-                    # 每本书下面的阅读按钮
                     if st.button("📖 立即阅读", key=f"read_{book['id']}", use_container_width=True):
                         st.session_state['reading_book_title'] = book['title']
                         st.rerun()
@@ -441,25 +453,24 @@ elif page == "📚 公共教材图书馆":
             st.info("💡 当前分类下暂无教材，等待馆长上新！")
 
     # ==========================
-    # 视图 B：沉浸宽屏阅读模式
+    # 视图 B：全宽沉浸阅读模式
     # ==========================
     else:
         selected_lib_item = next((b for b in lib_data if b['title'] == st.session_state['reading_book_title']), None)
         
         if selected_lib_item:
-            # 顶部返回按钮
             if st.button("⬅️ 返回书架", type="primary"):
                 st.session_state['reading_book_title'] = None
                 st.rerun()
             
-            # 宽阔阅读区 4:1.2 比例
-            col_read, col_tools = st.columns([4, 1.2], gap="large")
+            # 全屏宽度下的黄金比例分配
+            col_read, col_tools = st.columns([5, 1.5], gap="large")
             
             with col_read:
                 st.markdown(f"#### {selected_lib_item.get('title')}")
                 clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
                 paper_bg = "#F5F7EC" 
-                st.markdown(f"<div style='background-color: {paper_bg}; padding: 35px 50px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.2em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: 1.2em; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'>{clean_html_text}</div>", unsafe_allow_html=True)
             
             with col_tools:
                 st.markdown("#### 🛠️ 伴读助手")
@@ -498,7 +509,6 @@ elif page == "📚 公共教材图书馆":
 # 🔍 模块：教研室
 # ==========================================
 elif page == "🔍 智能精读教研室":
-    st.title("🔍 智能精读教研室")
     col1, col2 = st.columns([4, 1])
     with col1: url = st.text_input("🔗 输入英文文章链接：")
     with col2: 
@@ -541,7 +551,6 @@ elif page == "🔍 智能精读教研室":
 # 🗂️ 档案馆
 # ==========================================
 elif page == "🗂️ 文章分类档案馆":
-    st.title("🗂️ 私人档案馆")
     try:
         arts_data = supabase.table('articles').select('*').eq('user_id', CURRENT_USER_ID).execute().data
         if arts_data:
@@ -551,7 +560,7 @@ elif page == "🗂️ 文章分类档案馆":
                 with tab:
                     filtered_arts = [a for a in arts_data if a.get('category') == categories[i]] if categories[i] != "全部" else arts_data
                     if filtered_arts:
-                        col_list, col_content = st.columns([1, 3.5], gap="large")
+                        col_list, col_content = st.columns([1, 4], gap="large")
                         with col_list:
                             options = [f"{idx+1}. {a.get('content', '')[:25]}..." for idx, a in enumerate(filtered_arts)]
                             selected_title = st.radio("选择文章", options, key=f"radio_{i}", label_visibility="collapsed")
@@ -579,8 +588,6 @@ elif page == "🗂️ 文章分类档案馆":
 # 🔠 模块：词库与大纲
 # ==========================================
 elif page == "🔠 词库与大纲":
-    st.title("🔠 词汇生态系统")
-    
     tab_mine, tab_public = st.tabs(["📓 我的私人生词本", "🌍 公共大纲词库"])
     
     with tab_mine:
@@ -639,8 +646,8 @@ elif page == "🔠 词库与大纲":
                         c3.button("🗑️ 删除选中的 (请先打钩)", disabled=True, use_container_width=True)
 
                 else:
-                    tag_filter = st.selectbox("🎓 分类筛选：", ["全部"] + list(df_vocab['tags'].dropna().unique()))
-                    display_df = df_vocab[df_vocab['tags'] == tag_filter] if tag_filter != "全部" else df_vocab
+                    cat_filter = st.radio("🎓 分类筛选", ["全部"] + list(df_vocab['tags'].dropna().unique()), horizontal=True, label_visibility="collapsed")
+                    display_df = df_vocab[df_vocab['tags'] == cat_filter] if cat_filter != "全部" else df_vocab
                     
                     html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
                     for _, row in display_df.iterrows():
