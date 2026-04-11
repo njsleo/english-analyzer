@@ -46,37 +46,31 @@ class SimpleUser:
         self.id = uid
 
 # ==========================================
-# 🎨 UI/UX 极致全屏顶导视觉系统 (字体冲突修复版)
+# 🎨 UI/UX 极致全屏顶导视觉系统 
 # ==========================================
 st.set_page_config(page_title="顶级英语教研平台-商业版", page_icon="🏛️", layout="wide", initial_sidebar_state="collapsed")
 
 custom_css = """
 <style>
-    /* 1. 物理级抹杀侧边栏 */
     [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebar"] { display: none !important; }
     
-    /* 2. 极限压缩顶部留白！强制归零 */
     .block-container { padding-top: 0rem !important; padding-bottom: 1rem !important; margin-top: -1rem !important; max-width: 95% !important;}
     [data-testid="stAppViewBlockContainer"] { padding-top: 0rem !important; }
     [data-testid="stHeader"] { display: none !important; height: 0 !important; }
     .stHeadingContainer { margin-top: -2rem !important; }
     
-    /* 字体整体调小一号，更加精致 */
     h1 { font-size: 1.6rem !important; margin-top: -1rem !important; padding-bottom: 10px !important; }
     h2 { font-size: 1.3rem !important; }
     h3 { font-size: 1.1rem !important; }
     h4 { font-size: 1.05rem !important; }
     h5 { font-size: 1rem !important; }
 
-    /* 护眼大背景 */
     .stApp { background-color: #EBF0E5 !important; }
     
-    /* 🌟 核心修复：只修改标题字体，取消 span 的强制覆盖，解决下拉箭头和上传按钮的乱码冲突！ */
     h1, h2, h3, h4, h5 { font-family: 'Times New Roman', 'DengXian', '等线', serif !important; color: #1A1A24; font-weight: bold;}
     p { color: #1A1A24; }
     
-    /* 胶囊导航栏收窄 */
     div.row-widget.stRadio > div { flex-direction: row; gap: 8px; flex-wrap: wrap; margin-top: 5px;}
     div[role="radiogroup"] label[data-baseweb="radio"] > div:first-child { display: none !important; } 
     div[role="radiogroup"] label[data-baseweb="radio"] { 
@@ -89,7 +83,6 @@ custom_css = """
         transition: all 0.2s ease;
     }
     div[role="radiogroup"] label[data-baseweb="radio"] > div:nth-child(2) { margin-left: 0 !important; width: 100%; text-align: center; }
-    /* 导航文字瘦身 */
     div[role="radiogroup"] label[data-baseweb="radio"] p { color: #556070 !important; font-size: 0.85em !important; margin: 0 !important;}
     
     div[role="radiogroup"] label[data-baseweb="radio"]:hover { background-color: #DFE6D8 !important; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
@@ -270,7 +263,7 @@ if not IS_SUPER_ADMIN and is_expired:
     st.stop()
 
 # ==========================================
-# 🌟 全新顶部全局导航栏
+# 🌟 全局导航栏 
 # ==========================================
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
 if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
@@ -380,7 +373,8 @@ elif page == "📚 公共教材图书馆":
     if 'reading_book_title' not in st.session_state:
         st.session_state['reading_book_title'] = None
 
-    base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "课外阅读", "其他"]
+    # 🌟 扩充更细致的全题裁大类
+    base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "冒险悬疑", "科幻奇幻", "浪漫爱情", "历史传记", "童话寓言", "短篇小说", "商业科技", "喜剧戏剧", "影视原著", "课外阅读", "其他"]
     
     lib_data = []
     try:
@@ -403,7 +397,6 @@ elif page == "📚 公共教材图书馆":
             with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
                 lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
                 cover_file = st.file_uploader("🖼️ 上传自定义封面 (可选, 不传则自动生成绝美图片)", type=["png", "jpg", "jpeg"])
-                
                 upload_method = st.radio("正文录入方式", ["手动粘贴", "📂 上传本地文档"], horizontal=True, label_visibility="collapsed")
                 lib_content = st.text_area("正文", height=100) if upload_method == "手动粘贴" else ""
                 if upload_method != "手动粘贴":
@@ -421,7 +414,6 @@ elif page == "📚 公共教材图书馆":
                             supabase.table('public_library').insert({"title": lib_title, "category": lib_cat, "content": lib_content}).execute()
                         st.success("✅ 上传成功！"); st.session_state['reading_book_title'] = None; st.rerun()
 
-        st.markdown("<h4 style='color:#1F4E79; margin-bottom: 10px;'>📖 书架分类</h4>", unsafe_allow_html=True)
         cat_filter = st.radio("分类", final_categories, horizontal=True, label_visibility="collapsed", key="cat_radio")
         st.write("---")
 
@@ -460,20 +452,18 @@ elif page == "📚 公共教材图书馆":
             st.info("💡 当前分类下暂无教材，等待馆长上新！")
 
     # ==========================
-    # 视图 B：全宽沉浸阅读模式 (🌟 动态字号版)
+    # 视图 B：全宽沉浸阅读模式 
     # ==========================
     else:
         selected_lib_item = next((b for b in lib_data if b['title'] == st.session_state['reading_book_title']), None)
         
         if selected_lib_item:
-            # 🌟 新增：优雅的返回按钮与动态字号调节器
             c_back, c_space, c_font = st.columns([1.5, 5, 2.5])
             with c_back:
                 if st.button("⬅️ 返回书架", type="primary"):
                     st.session_state['reading_book_title'] = None
                     st.rerun()
             with c_font:
-                # 使用胶囊样式的 Radio 按钮来控制字号
                 font_opt = st.radio("阅读字号", ["标准", "放大", "特大"], horizontal=True, index=0, label_visibility="collapsed")
                 font_map = {"标准": "1.05em", "放大": "1.25em", "特大": "1.45em"}
                 current_fs = font_map[font_opt]
@@ -484,7 +474,6 @@ elif page == "📚 公共教材图书馆":
                 st.markdown(f"#### {selected_lib_item.get('title')}")
                 clean_html_text = format_reading_text(selected_lib_item.get('content', ''))
                 paper_bg = "#F5F7EC" 
-                # 🌟 将用户选定的字号 current_fs 注入到阅读区 CSS 中
                 st.markdown(f"<div style='background-color: {paper_bg}; padding: 40px 60px; border-radius: 8px; font-family: \"Times New Roman\", serif; font-size: {current_fs}; color: #2C3E50; line-height: 1.8; text-align: justify; height: 75vh; overflow-y: auto; border: 1px solid #D8DFD0; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: font-size 0.3s ease;'>{clean_html_text}</div>", unsafe_allow_html=True)
             
             with col_tools:
@@ -679,8 +668,12 @@ elif page == "🔠 词库与大纲":
         if IS_ADMIN:
             with st.expander("👑 馆长专属：用 AI 批量生成公共词库", expanded=False):
                 st.info("💡 支持直接粘贴单词，或上传纯文本(txt/docx)。AI会自动解析并上架。")
+                
+                # 更新为更细致的全题材分类
+                base_categories = ["全部", "新概念", "小学教材", "初中教材", "高中教材", "大学四六级", "雅思托福", "英文名著", "外刊新闻", "冒险悬疑", "科幻奇幻", "浪漫爱情", "历史传记", "童话寓言", "短篇小说", "商业科技", "喜剧戏剧", "影视原著", "课外阅读", "其他"]
+                
                 v_title = st.text_input("词库书名 (例如: 中考必背词汇 1-50)")
-                v_level = st.selectbox("适用级别", ["小学", "初中", "高中", "大学四六级", "雅思托福", "其他"])
+                v_level = st.selectbox("适用级别", base_categories[1:])
                 
                 upload_method_v = st.radio("单词录入方式", ["手动粘贴词表", "📂 上传本地单词文档 (txt/docx)"], horizontal=True)
                 v_raw = ""
