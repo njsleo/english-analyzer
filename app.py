@@ -192,27 +192,6 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-def render_dictionary_card(word_data):
-    word = safe_str(word_data.get('word', ''))
-    phonetic = safe_str(word_data.get('phonetic', ''))
-    translation = safe_str(word_data.get('translation', ''))
-    memory_tip = safe_str(word_data.get('memory_tip', ''))
-    
-    safe_word = urllib.parse.quote(word).replace("'", "%27")
-    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-    audio_player = f"<audio controls preload='none' style='height: 25px; width: 120px; margin-left: 8px; vertical-align: middle;'><source src='{audio_url}' type='audio/mpeg'></audio>"
-    
-    dict_html = f"""
-    <div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px; color: #2C3E50;'>
-        <strong style='font-size: 1.15em; color: #1A1A24;'>{word}</strong> 
-        <span style='color: #666; margin-left: 5px;'>{phonetic}</span> 
-        {audio_player}<br><br>
-        <strong>释义：</strong>{translation}<br><br>
-        <strong>记忆：</strong><span style='color: #555;'>{memory_tip}</span>
-    </div>
-    """
-    st.markdown(dict_html, unsafe_allow_html=True)
-
 def render_html_vocab_table(v_list):
     if isinstance(v_list, pd.DataFrame):
         if v_list.empty: return
@@ -535,7 +514,12 @@ elif page == "📚 公共教材图书馆":
                                 try:
                                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                     word_data = json.loads(res.choices[0].message.content)
-                                    render_dictionary_card(word_data)
+                                    
+                                    safe_word = urllib.parse.quote(word_data.get('word', '')).replace("'", "%27")
+                                    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
+                                    audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_url}' type='audio/mpeg'></audio>"
+                                    
+                                    st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} {audio_player}<br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
                                     word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                 except: st.error("查词失败")
                 with tab_clip:
@@ -555,7 +539,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室 (🌟 史诗级升级：AI 沉浸式图文教学设计)
+# 🔍 模块：教研室 (🌟 史诗级 AI 特级教师备课系统)
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -567,14 +551,13 @@ elif page == "🔍 智能精读教研室":
     
     final_text = st.text_area("📝 待分析/教学文本：", value=st.session_state.get('temp_text', ""), height=150)
     
-    # 🌟 双引擎驱动架构
     btn_col1, btn_col2 = st.columns(2)
     with btn_col1:
         btn_parse = st.button("🧠 生成逐句精读与词汇库", type="primary", use_container_width=True)
     with btn_col2:
-        btn_teach = st.button("🧑‍🏫 生成 AI 沉浸式教学设计 (带动态配图)", type="primary", use_container_width=True)
+        btn_teach = st.button("🧑‍🏫 生成 AI 特级名师备课系统 (全套)", type="primary", use_container_width=True)
     
-    # --- 引擎 1：传统的精读与词汇解析 ---
+    # --- 引擎 1：精读解析 ---
     if btn_parse:
         if not final_text.strip(): st.error("请先输入文本")
         else:
@@ -584,31 +567,47 @@ elif page == "🔍 智能精读教研室":
                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                     st.session_state['analysis_result'] = json.loads(res.choices[0].message.content)
                     st.session_state['article_content'] = final_text
-                    st.session_state['analysis_mode'] = 'parse' # 记录当前模式
+                    st.session_state['analysis_mode'] = 'parse' 
                     st.rerun()
                 except Exception: st.error("分析失败")
 
-    # --- 引擎 2：全新的 AI 教学设计引擎 ---
+    # --- 引擎 2：全套 AI 名师备课引擎 ---
     if btn_teach:
         if not final_text.strip(): st.error("请先输入文本")
         else:
-            with st.spinner("🧑‍🏫 AI 专家正在为您撰写教学方案，并实时绘制 PPT 级配图，请稍候..."):
-                prompt = f"""你是一位拥有20年经验的顶级英语教研专家。请根据以下英文文本，为教师设计一堂结构完整、极具启发性和沉浸感的英语阅读教学全过程。
+            with st.spinner("🧑‍🏫 AI 特级教师正在为您规划板书、提问、小测与作业，请稍候..."):
+                # 🌟 核心：史诗级 Prompt，加入四大刚需教研模块
+                prompt = f"""你是一位拥有20年经验的特级英语教研组长。请根据以下英文文本，为教师设计一堂极具启发性的英语教学全案。
                 必须严格返回纯JSON格式数据。格式如下：
                 {{
                   "topic": "引人入胜的课程主题",
                   "objectives": ["目标1", "目标2", "目标3"],
+                  "boardwork": {{
+                      "main_idea": "文章核心主旨(一句话)",
+                      "structure_map": ["结构点1: 细节", "结构点2: 细节", "结构点3: 细节"]
+                  }},
                   "teaching_steps": [
                     {{
                       "step_name": "环节名称 (如: 1. Lead-in 奇妙导入)",
                       "duration": "时长 (如: 5 mins)",
                       "activity": "详细的教师活动与学生互动设计",
                       "script": "地道、富有感染力的全英文教师开场/引导话术",
-                      "image_keyword": "用一句极其详细的纯英文Prompt描述这个教学环节的视觉画面(例如: A high quality cinematic photo of students exploring a mysterious cave, lighting, 8k)。这个Prompt将用于AI直接生成精美配图。"
+                      "image_keyword": "用一句极其详细的纯英文Prompt描述这个环节的视觉画面(例如: A cinematic photo of...). 这个Prompt将用于AI绘图。"
                     }}
-                  ]
+                  ],
+                  "ccqs_questions": [
+                      {{"question": "全英文提问 (推断/细节/主旨)", "answer": "标准答案及解析"}}
+                  ],
+                  "mini_quiz": [
+                      {{"type": "填空 / 选择", "question": "题目描述", "options": "如果是选择题提供A. B. C. 选项，填空则写无", "answer": "正确答案"}}
+                  ],
+                  "differentiated_homework": {{
+                      "level_A": "基础巩固作业 (针对后进生，如词汇抄写/朗读)",
+                      "level_B": "核心提升作业 (针对中等生，如复述故事/造句)",
+                      "level_C": "高阶挑战作业 (针对学霸，如续写/深度探讨)"
+                  }}
                 }}
-                注意：步骤必须包含 Lead-in(导入), Pre-reading(读前), While-reading(读中), Post-reading(读后/讨论), Homework(作业)。
+                注意：教学步骤必须包含 Lead-in(导入), Pre-reading(读前), While-reading(读中), Post-reading(读后/讨论)。
                 待分析文本：\n{final_text[:5000]}""" 
                 try:
                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
@@ -618,11 +617,10 @@ elif page == "🔍 智能精读教研室":
                 except Exception: st.error("教学设计生成失败")
 
     # ==========================
-    # 渲染区：根据用户选择展示不同结果
+    # 渲染区
     # ==========================
     current_mode = st.session_state.get('analysis_mode', None)
     
-    # --- 渲染：精读解析 ---
     if current_mode == 'parse' and 'analysis_result' in st.session_state:
         res = st.session_state['analysis_result']; st.divider()
         c1, c2, c3 = st.columns(3)
@@ -648,34 +646,91 @@ elif page == "🔍 智能精读教研室":
             st.markdown("### 📚 核心词汇表")
             render_html_vocab_table(v_list)
 
-    # --- 渲染：AI 教学设计 ---
+    # --- 🌟 渲染：AI 特级名师备课系统 (排版全面升级) ---
     elif current_mode == 'teach' and 'teaching_design' in st.session_state:
         design = st.session_state['teaching_design']
         st.divider()
         
-        # 顶部标题与目标面板
+        # 1. 顶部标题
         st.markdown(f"<div style='background-color:#1A1E2A; color:white; padding:30px; border-radius:12px; text-align:center;'><h2 style='color:white; margin-bottom:15px;'>🎯 {design.get('topic', 'English Lesson')}</h2><p style='color:#8892B0; font-size:1.1em;'>AI Powered Immersive Teaching Design</p></div>", unsafe_allow_html=True)
         
-        st.markdown("#### 📌 教学目标 (Teaching Objectives)")
-        for obj in design.get('objectives', []):
-            st.markdown(f"- ✅ {obj}")
+        col_L, col_R = st.columns([1, 1], gap="large")
+        
+        with col_L:
+            st.markdown("#### 📌 教学目标 (Objectives)")
+            st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
+            for obj in design.get('objectives', []):
+                st.markdown(f"- ✅ {obj}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_R:
+            # 🌟 模块1：结构化板书设计 (UI精修)
+            st.markdown("#### 🗺️ 板书结构 (Boardwork)")
+            st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
+            bw = design.get('boardwork', {})
+            st.markdown(f"**💡 Main Idea:** <span style='color:#C00000;'>{bw.get('main_idea', '')}</span>", unsafe_allow_html=True)
+            for point in bw.get('structure_map', []):
+                st.markdown(f"- 📌 {point}")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
         st.write("---")
         
-        # 逐个渲染教学步骤，并使用 Pollinations 实时生成精美配图
+        # 2. 教学步骤与动态配图
         for step in design.get('teaching_steps', []):
             st.markdown(f"### {step.get('step_name')} <span style='font-size:0.6em; color:#8892B0; font-weight:normal;'>⏱️ {step.get('duration')}</span>", unsafe_allow_html=True)
             
-            # 🎨 调用 AI 绘画引擎获取配图 (即时生成，无版权，高清)
             img_kw = step.get('image_keyword', '')
             if img_kw:
                 safe_kw = urllib.parse.quote(img_kw)
-                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=900&height=350&nologo=true"
-                st.markdown(f"<div style='width:100%; border-radius:12px; overflow:hidden; margin-bottom:20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);'><img src='{img_url}' style='width:100%; object-fit:cover; display:block;'></div>", unsafe_allow_html=True)
+                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=900&height=300&nologo=true"
+                st.markdown(f"<div style='width:100%; border-radius:12px; overflow:hidden; margin-bottom:15px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);'><img src='{img_url}' style='width:100%; object-fit:cover; display:block;'></div>", unsafe_allow_html=True)
             
-            # 步骤内容
-            st.markdown(f"**💡 教学活动设计：**\n\n{step.get('activity')}")
-            st.markdown(f"<div style='background-color:#EBF0E5; padding:15px 20px; border-left:4px solid #3A5F40; border-radius:4px; color:#2C3E50; font-style:italic;'><b>🗣️ Teacher's Script (全英文示范话术):</b><br><br>\"{step.get('script')}\"</div>", unsafe_allow_html=True)
-            st.write("---")
+            st.markdown(f"**💡 活动设计：**\n\n{step.get('activity')}")
+            st.markdown(f"<div style='background-color:#EBF0E5; padding:15px 20px; border-left:4px solid #3A5F40; border-radius:4px; color:#2C3E50; font-style:italic; margin-bottom: 20px;'><b>🗣️ Teacher's Script:</b><br><br>\"{step.get('script')}\"</div>", unsafe_allow_html=True)
+            
+        st.write("---")
+        
+        col_Q, col_H = st.columns([1, 1], gap="large")
+        
+        with col_Q:
+            # 🌟 模块2：夺命连环追问
+            st.markdown("#### ❓ 课堂互动提问 (CCQs)")
+            for q in design.get('ccqs_questions', []):
+                with st.expander(f"🗣️ {q.get('question')}"):
+                    st.markdown(f"**💡 Answer:** {q.get('answer')}")
+            
+            # 🌟 模块3：随堂实战小测 (排版精修版)
+            st.markdown("<br>#### 📝 随堂小测 (Mini-Quiz)", unsafe_allow_html=True)
+            st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
+            for idx, mq in enumerate(design.get('mini_quiz', [])):
+                st.markdown(f"**Q{idx+1}. [{mq.get('type')}]** {mq.get('question')}")
+                if mq.get('options') and mq.get('options') != "无":
+                    st.caption(f"🔘 {mq.get('options')}")
+                st.markdown(f"<span style='color:#C00000; font-size:0.9em; font-weight:bold;'>🔑 答案: {mq.get('answer')}</span>", unsafe_allow_html=True)
+                if idx < len(design.get('mini_quiz', [])) - 1:
+                    st.write("---")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_H:
+            # 🌟 模块4：分层作业设计 (高级视觉排版)
+            st.markdown("#### 📶 分层作业设计 (Differentiated HW)")
+            hw = design.get('differentiated_homework', {})
+            st.markdown(f"""
+            <div style='background:#F5F7EC; padding:20px; border-radius:8px; border:1px solid #D8DFD0;'>
+                <div style='margin-bottom: 20px;'>
+                    <span style='background:#D3DCCB; color:#1F4E79; padding:4px 10px; border-radius:4px; font-weight:bold; font-size:0.9em;'>🟢 Level A (基础巩固)</span>
+                    <div style='color:#444; font-size:0.95em; margin-top:10px;'>{hw.get('level_A', '')}</div>
+                </div>
+                <div style='margin-bottom: 20px;'>
+                    <span style='background:#FDECC8; color:#B07D00; padding:4px 10px; border-radius:4px; font-weight:bold; font-size:0.9em;'>🟡 Level B (核心提升)</span>
+                    <div style='color:#444; font-size:0.95em; margin-top:10px;'>{hw.get('level_B', '')}</div>
+                </div>
+                <div>
+                    <span style='background:#FADBD8; color:#C00000; padding:4px 10px; border-radius:4px; font-weight:bold; font-size:0.9em;'>🔴 Level C (高阶挑战)</span>
+                    <div style='color:#444; font-size:0.95em; margin-top:10px;'>{hw.get('level_C', '')}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ==========================================
 # 🗂️ 档案馆
