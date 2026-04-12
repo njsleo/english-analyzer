@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components  # 🌟 新增：沙盒组件引擎，用于完美运行发音代码
 import json
 import pandas as pd
 import trafilatura
@@ -96,6 +95,10 @@ custom_css = """
     
     div[data-baseweb="tab-list"] { gap: 6px; padding-bottom: 5px; }
     div[data-baseweb="tab"] { padding: 8px 16px !important; font-size: 0.9em !important; border-radius: 6px 6px 0 0; background-color: transparent; }
+    
+    .audio-btn { cursor: pointer; margin-left: 8px; font-size: 1.15em; transition: all 0.2s ease; display: inline-block; }
+    .audio-btn:hover { transform: scale(1.3); text-shadow: 0 2px 5px rgba(0,0,0,0.15); }
+    .audio-btn:active { transform: scale(0.9); }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -188,7 +191,6 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-# 🌟 查词沙盒渲染器 (解决防注入不发音问题)
 def render_dictionary_card(word_data):
     safe_word = urllib.parse.quote(word_data.get('word', '')).replace("'", "%27")
     audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
@@ -216,7 +218,6 @@ def render_dictionary_card(word_data):
     """
     components.html(dict_html, height=160)
 
-# 🌟 词库表格沙盒渲染器 (解决防注入不发音问题)
 def render_vocabulary_table(df):
     html_table = """
     <!DOCTYPE html>
@@ -249,7 +250,7 @@ def render_vocabulary_table(df):
     components.html(html_table, height=600)
 
 # ==========================================
-# 🔐 认证与无感登录系统
+# 🔐 认证与无感登录系统 (🌟 增加昵称输入)
 # ==========================================
 if 'user' not in st.session_state: st.session_state['user'] = None
 
@@ -277,6 +278,7 @@ if st.session_state['user'] is None:
                     st.rerun()
                 except: st.error("账号或密码有误")
         with tab_signup:
+            s_username = st.text_input("设置昵称/用户名 (选填, 彰显尊贵身份)") # 🌟 新增昵称框
             s_email = st.text_input("设置邮箱"); s_pwd = st.text_input("设置密码(>6位)", type="password"); s_code = st.text_input("邀请码")
             if st.button("注册"):
                 code_res = supabase.table('invitation_codes').select('*').eq('code', s_code).eq('is_used', False).execute()
@@ -285,14 +287,15 @@ if st.session_state['user'] is None:
                         supabase.auth.sign_up({"email": s_email, "password": s_pwd})
                         exp = (datetime.datetime.now() + datetime.timedelta(days=code_res.data[0]['duration_days'])).isoformat()
                         supabase.table('invitation_codes').update({'is_used': True, 'used_by': s_email}).eq('code', s_code).execute()
-                        supabase.table('subscriptions').insert({'user_email': s_email, 'expires_at': exp, 'role': 'user'}).execute()
+                        # 🌟 写入数据库时带上 username
+                        supabase.table('subscriptions').insert({'user_email': s_email, 'username': s_username, 'expires_at': exp, 'role': 'user'}).execute()
                         st.success("注册成功！请切换登录。")
                     except: st.error("注册失败，可能邮箱已被使用。")
                 else: st.error("邀请码无效或已使用")
     st.stop()
 
 # ==========================================
-# 🛡️ 订阅与 RBAC 权限系统
+# 🛡️ 订阅与 RBAC 权限系统 (🌟 获取并显示昵称)
 # ==========================================
 USER_EMAIL = st.session_state['user'].email; CURRENT_USER_ID = st.session_state['user'].id
 IS_SUPER_ADMIN = (USER_EMAIL == ADMIN_EMAIL) 
@@ -300,12 +303,16 @@ IS_SUPER_ADMIN = (USER_EMAIL == ADMIN_EMAIL)
 current_exp = None
 is_expired = False
 user_role = "user"
+user_name = USER_EMAIL # 默认兜底显示邮箱
 
 sub_res = supabase.table('subscriptions').select('*').eq('user_email', USER_EMAIL).execute()
 if sub_res.data:
     current_exp = datetime.datetime.fromisoformat(sub_res.data[0]['expires_at'])
     if datetime.datetime.now() > current_exp and not IS_SUPER_ADMIN: is_expired = True
     user_role = sub_res.data[0].get('role', 'user')
+    # 🌟 获取昵称，如果没有则显示邮箱
+    db_uname = sub_res.data[0].get('username')
+    if db_uname: user_name = db_uname
 else:
     if not IS_SUPER_ADMIN: is_expired = True
 
@@ -320,7 +327,7 @@ if not IS_SUPER_ADMIN and is_expired:
     st.stop()
 
 # ==========================================
-# 🌟 全局导航栏 
+# 🌟 全局导航栏 (🌟 显示高贵的昵称)
 # ==========================================
 menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
 if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
@@ -338,7 +345,8 @@ with col_info:
     role_badge = "👑 馆长" if IS_ADMIN else "👤 会员"
     status_icon = "🔴" if is_expired else "🟢"
     exp_text = current_exp.strftime('%Y-%m-%d') if current_exp else "终身"
-    st.markdown(f"<div style='text-align: right; padding-top: 15px; color: #556070; font-size: 0.85em;'>{role_badge} <b>{USER_EMAIL}</b> &nbsp;|&nbsp; {status_icon} {exp_text}</div>", unsafe_allow_html=True)
+    # 🌟 这里替换成了 user_name
+    st.markdown(f"<div style='text-align: right; padding-top: 15px; color: #556070; font-size: 0.85em;'>{role_badge} <b>{user_name}</b> &nbsp;|&nbsp; {status_icon} {exp_text}</div>", unsafe_allow_html=True)
 
 with col_logout:
     st.write("")
@@ -379,7 +387,9 @@ if IS_SUPER_ADMIN and page == "👑 创始人控制台":
                 if selected_user:
                     user_info = df_subs[df_subs['user_email'] == selected_user].iloc[0]; curr_exp = user_info['到期时间']
                     curr_role = user_info.get('role', 'user')
-                    st.markdown(f"<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'><b style='font-size:1.1em;'>客户：{selected_user}</b><br>当前状态：{user_info['状态']}<br>系统角色：{curr_role}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>", unsafe_allow_html=True)
+                    # 🌟 管理后台也展示昵称
+                    c_name = user_info.get('username') or selected_user
+                    st.markdown(f"<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0; margin-bottom:15px;'><b style='font-size:1.1em;'>客户：{c_name}</b> ({selected_user})<br>当前状态：{user_info['状态']}<br>系统角色：{curr_role}<br>到期时间：{curr_exp.strftime('%Y-%m-%d %H:%M:%S')}</div>", unsafe_allow_html=True)
                     
                     c1, c2 = st.columns(2)
                     with c1:
@@ -445,6 +455,7 @@ elif page == "📚 公共教材图书馆":
     else: final_categories = ["全部"]
 
     if st.session_state['reading_book_title'] is None:
+        
         if IS_ADMIN:
             with st.expander("👑 馆长专属：上传新教材/小说", expanded=False):
                 lib_title = st.text_input("篇目标题"); lib_cat = st.selectbox("选择分类", base_categories[1:])
@@ -535,7 +546,6 @@ elif page == "📚 公共教材图书馆":
                                 try:
                                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                     word_data = json.loads(res.choices[0].message.content)
-                                    # 🌟 修复发音沙盒调用
                                     render_dictionary_card(word_data)
                                     word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                 except: st.error("查词失败")
@@ -635,7 +645,7 @@ elif page == "🗂️ 文章分类档案馆":
     except: pass
 
 # ==========================================
-# 🔠 模块：词库与大纲 (🌟 沙盒发音表格完美修复)
+# 🔠 模块：词库与大纲
 # ==========================================
 elif page == "🔠 词库与大纲":
     tab_mine, tab_public = st.tabs(["📓 我的私人生词本", "🌍 公共大纲词库"])
@@ -698,8 +708,6 @@ elif page == "🔠 词库与大纲":
                 else:
                     cat_filter = st.radio("🎓 分类筛选", ["全部"] + list(df_vocab['tags'].dropna().unique()), horizontal=True, label_visibility="collapsed")
                     display_df = df_vocab[df_vocab['tags'] == cat_filter] if cat_filter != "全部" else df_vocab
-                    
-                    # 🌟 核心：调用独立渲染函数，保证 HTML 完全隔离不受干扰，确保点击能够发音
                     render_vocabulary_table(display_df)
                 
             else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
@@ -752,7 +760,6 @@ elif page == "🔠 词库与大纲":
                                 supabase.table('vocabulary').insert(v).execute()
                             st.success("✅ 导入成功！快去【我的私人生词本】复习吧！")
                     
-                    # 🌟 核心：通过 pandas 转为 dataframe 后调用沙盒渲染，发音完美恢复
                     df_pub = pd.DataFrame(vocab_json)
                     render_vocabulary_table(df_pub)
                 except: st.error("词库格式异常。")
