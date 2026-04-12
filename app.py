@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # 🌟 核心：引入沙盒隔离引擎，完美运行发音代码！
 import json
 import pandas as pd
 import trafilatura
@@ -102,6 +103,12 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # ==========================================
 # 🛠️ 核心工具函数区
 # ==========================================
+# 🌟 核心：防崩溃安全字符串转换器
+def safe_str(val):
+    if pd.isna(val) or val is None:
+        return ""
+    return str(val)
+
 def set_font(run, ascii_font='Times New Roman', east_asia_font='等线'): 
     run.font.name = ascii_font; run._element.rPr.rFonts.set(qn('w:eastAsia'), east_asia_font)
 
@@ -187,24 +194,90 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-# 🌟 全局统一词汇表渲染引擎 (完美解决发音与显示问题)
-def render_html_vocab_table(v_list):
-    if not v_list: return ""
-    if isinstance(v_list, pd.DataFrame): v_list = v_list.to_dict('records')
+# 🌟 全新沙盒查词卡片渲染器
+def render_dictionary_card(word_data):
+    word = safe_str(word_data.get('word', ''))
+    phonetic = safe_str(word_data.get('phonetic', ''))
+    translation = safe_str(word_data.get('translation', ''))
+    memory_tip = safe_str(word_data.get('memory_tip', ''))
     
-    html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标 / 纯正发音</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
+    safe_word = urllib.parse.quote(word).replace("'", "%27")
+    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
+    
+    dict_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{ margin: 0; font-family: "Times New Roman", "等线", serif; background-color: transparent; }}
+        .card {{ background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; color: #2C3E50; }}
+        .audio-btn {{ cursor: pointer; font-size: 1.15em; margin-left: 5px; transition: transform 0.2s ease; display: inline-block; }}
+        .audio-btn:hover {{ transform: scale(1.3); }}
+    </style>
+    </head>
+    <body>
+        <div class="card">
+            <strong style='font-size: 1.15em; color: #1A1A24;'>{word}</strong> 
+            <span style='color: #666; margin-left: 5px;'>{phonetic}</span> 
+            <span class="audio-btn" onclick="new Audio('{audio_url}').play()" title="点击听纯正发音">🔊</span><br><br>
+            <strong>释义：</strong>{translation}<br><br>
+            <strong>记忆：</strong><span style='color: #555;'>{memory_tip}</span>
+        </div>
+    </body>
+    </html>
+    """
+    components.html(dict_html, height=180)
+
+# 🌟 全新防崩溃沙盒词汇表渲染引擎
+def render_html_vocab_table(v_list):
+    if not v_list: return
+    if isinstance(v_list, pd.DataFrame):
+        v_list = v_list.fillna('').to_dict('records')
+    
+    html_table = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body { margin: 0; font-family: "Times New Roman", "等线", serif; background-color: transparent; }
+        .table-wrapper { background-color: #F5F7EC; border: 1px solid #D8DFD0; border-radius: 8px; height: 600px; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79; position: sticky; top: 0; background-color: #DFE6D8; z-index: 1; font-weight: bold; }
+        td { padding: 12px 16px; border-bottom: 1px solid #EAECEF; color: #2C3E50; }
+        .audio-btn { cursor: pointer; margin-left: 8px; font-size: 1.15em; transition: transform 0.2s ease; display: inline-block; }
+        .audio-btn:hover { transform: scale(1.3); text-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .tag { background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111; }
+    </style>
+    </head>
+    <body>
+    <div class="table-wrapper">
+    <table>
+        <thead>
+            <tr><th>单词</th><th>音标</th><th>释义</th><th>级别</th><th>记忆法</th><th>实用例句</th></tr>
+        </thead>
+        <tbody>
+    """
     
     for row in v_list:
-        word = row.get('word', '')
+        # 使用 safe_str 防止遇到空数据时导致 quote() 报错崩溃整个页面
+        word = safe_str(row.get('word', ''))
+        phonetic = safe_str(row.get('phonetic', ''))
+        translation = safe_str(row.get('translation', ''))
+        tags = safe_str(row.get('tags', ''))
+        memory_tip = safe_str(row.get('memory_tip', ''))
+        usage_examples = safe_str(row.get('usage_examples', ''))
+        
+        if not word: continue
+        
         safe_word = urllib.parse.quote(word).replace("'", "%27")
         audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-        # 使用极其精美的原生迷你播放器，100%不被拦截
-        audio_player = f"<audio controls preload='none' style='height: 28px; width: 110px; margin-left: 8px; vertical-align: middle;'><source src='{audio_link}' type='audio/mpeg'></audio>"
         
-        html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='padding: 12px 16px; color: #666; white-space: nowrap;'>{row.get('phonetic','')} {audio_player}</td><td style='padding: 12px 16px; color: #2C3E50;'>{row.get('translation','')}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{row.get('tags','')}</span></td><td style='padding: 12px 16px; color: #555;'>{row.get('memory_tip','')}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{row.get('usage_examples','')}</td></tr>"
+        html_table += f"<tr><td style='font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='color: #666; white-space: nowrap;'>{phonetic}<span class='audio-btn' onclick=\"new Audio('{audio_link}').play()\" title='点击听发音'>🔊</span></td><td>{translation}</td><td><span class='tag'>{tags}</span></td><td style='color: #555;'>{memory_tip}</td><td style='color: #444; font-size: 0.9em;'>{usage_examples}</td></tr>"
         
-    html_table += "</tbody></table></div>"
-    return html_table
+    html_table += "</tbody></table></div></body></html>"
+    # 在沙盒内渲染，不限制内部滚动，总高度适配网页
+    components.html(html_table, height=620, scrolling=False)
+
 
 # ==========================================
 # 🔐 认证与无感登录系统 
@@ -499,11 +572,8 @@ elif page == "📚 公共教材图书馆":
                                 try:
                                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                     word_data = json.loads(res.choices[0].message.content)
-                                    # 🌟 修复：伴读助手查词结果完美发音
-                                    safe_word = urllib.parse.quote(word_data.get('word', '')).replace("'", "%27")
-                                    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-                                    audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_url}' type='audio/mpeg'></audio>"
-                                    st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} {audio_player}<br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
+                                    # 🌟 使用安全沙盒渲染查词卡片
+                                    render_dictionary_card(word_data)
                                     word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                 except: st.error("查词失败")
                 with tab_clip:
@@ -523,7 +593,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室 (🌟 修复解析后无词汇表的Bug)
+# 🔍 模块：教研室
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -559,20 +629,20 @@ elif page == "🔍 智能精读教研室":
                     st.success("✅ 归档成功！")
                 except Exception: st.error("保存失败")
         
-        st.markdown("### 📝 逐句解析")            
+        st.markdown("### 📝 逐句解析")
         for i, s in enumerate(res.get('sentences', [])):
             st.markdown(f"""<div style='background:#F5F7EC; border-radius:8px; padding:12px; margin-bottom:8px; border:1px solid #D8DFD0;'>
                 <div style='font-family: Times New Roman; font-size:1.05em; font-weight:bold;'>[{i+1}] {s.get('en','')}</div><div style='color:#555; font-size:0.95em;'>译：{s.get('cn','')}</div>
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
         
-        # 🌟 修复：文章解析完毕后，底部完美展示词汇表
+        # 🌟 修复：文章解析完毕后，底部调用安全沙盒渲染词汇表
         v_list = res.get('core_vocabulary', [])
         if v_list:
             st.markdown("### 📚 核心词汇表")
-            st.markdown(render_html_vocab_table(v_list), unsafe_allow_html=True)
+            render_html_vocab_table(v_list)
 
 # ==========================================
-# 🗂️ 档案馆 (🌟 修复查看文章时无词汇表的Bug)
+# 🗂️ 档案馆
 # ==========================================
 elif page == "🗂️ 文章分类档案馆":
     try:
@@ -597,7 +667,7 @@ elif page == "🗂️ 文章分类档案馆":
                             c1, c2 = st.columns(2)
                             with c1: 
                                 word_data = generate_beautiful_word(full_analysis, selected_art.get('content', '')) if full_analysis else export_plain_text_to_word(selected_art.get('teaching_plan', ''))
-                                st.download_button("📥 重新导出Word", data=word_data, file_name="归档教案.docx", use_container_width=True, key=f"dl_{art_id}_{i}")
+                                st.download_button("📥 重新导出", data=word_data, file_name="归档教案.docx", use_container_width=True, key=f"dl_{art_id}_{i}")
                             with c2: 
                                 if st.button("🗑️ 永久删除", key=f"del_{art_id}_{i}", use_container_width=True):
                                     supabase.table('articles').delete().eq('id', art_id).execute(); st.rerun()
@@ -605,10 +675,10 @@ elif page == "🗂️ 文章分类档案馆":
                             st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F5F7EC; padding:12px; border-radius:6px; border:1px solid #D8DFD0; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
                             st.markdown("##### 🔬 逐句解析"); st.markdown(f"<div style='background-color:#F5F7EC; padding:16px; border-radius:6px; border:1px solid #D8DFD0; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
                             
-                            # 🌟 修复：展示该文章专属的核心词汇表
+                            # 🌟 修复：展示该文章专属的核心词汇表 (调用沙盒渲染)
                             if full_analysis and full_analysis.get('core_vocabulary'):
                                 st.markdown("##### 📚 核心词汇表")
-                                st.markdown(render_html_vocab_table(full_analysis.get('core_vocabulary')), unsafe_allow_html=True)
+                                render_html_vocab_table(full_analysis.get('core_vocabulary'))
                     else: st.info("暂无记录。")
         else: st.info("空空如也。")
     except: pass
@@ -678,8 +748,8 @@ elif page == "🔠 词库与大纲":
                     cat_filter = st.radio("🎓 分类筛选", ["全部"] + list(df_vocab['tags'].dropna().unique()), horizontal=True, label_visibility="collapsed")
                     display_df = df_vocab[df_vocab['tags'] == cat_filter] if cat_filter != "全部" else df_vocab
                     
-                    # 🌟 统一调用渲染器，带有原生的完美发音播放条
-                    st.markdown(render_html_vocab_table(display_df), unsafe_allow_html=True)
+                    # 🌟 统一调用无敌沙盒渲染器，带有原生的完美发音播放，且不会崩溃！
+                    render_html_vocab_table(display_df)
                 
             else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
         except Exception as e: pass
@@ -731,8 +801,8 @@ elif page == "🔠 词库与大纲":
                                 supabase.table('vocabulary').insert(v).execute()
                             st.success("✅ 导入成功！快去【我的私人生词本】复习吧！")
                     
-                    # 🌟 统一调用渲染器，带有原生的完美发音播放条
-                    st.markdown(render_html_vocab_table(vocab_json), unsafe_allow_html=True)
+                    # 🌟 统一调用无敌沙盒渲染器
+                    render_html_vocab_table(vocab_json)
                 except: st.error("词库格式异常。")
             else:
                 st.info("🌍 馆长还没上传过大纲词汇，敬请期待！")
