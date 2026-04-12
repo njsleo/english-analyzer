@@ -102,7 +102,6 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # ==========================================
 # 🛠️ 核心工具函数区
 # ==========================================
-# 安全字符转换，防止空数据崩溃
 def safe_str(val):
     if pd.isna(val) or val is None: return ""
     return str(val)
@@ -192,7 +191,7 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-# 🌟 查词卡片渲染器 (放弃沙盒，采用原生 HTML5 Audio)
+# 🌟 查词卡片渲染器
 def render_dictionary_card(word_data):
     word = safe_str(word_data.get('word', ''))
     phonetic = safe_str(word_data.get('phonetic', ''))
@@ -214,11 +213,14 @@ def render_dictionary_card(word_data):
     """
     st.markdown(dict_html, unsafe_allow_html=True)
 
-# 🌟 全局词汇表渲染引擎 (放弃沙盒，采用原生 HTML5 Audio 防崩溃)
+# 🌟 全局词汇表渲染引擎 (极致修复 Pandas DataFrame 的判空报错)
 def render_html_vocab_table(v_list):
-    if not v_list: return
+    # 修复地雷：安全检查传入的是否为空数据
     if isinstance(v_list, pd.DataFrame):
+        if v_list.empty: return
         v_list = v_list.fillna('').to_dict('records')
+    elif not v_list:
+        return
     
     html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标 & 发音</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
     
@@ -234,7 +236,7 @@ def render_html_vocab_table(v_list):
         
         safe_word = urllib.parse.quote(word).replace("'", "%27")
         audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-        # 绝不拦截的原生音频播放器
+        # 原生HTML5防拦截音频控件
         audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_link}' type='audio/mpeg'></audio>"
         
         html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='padding: 12px 16px; color: #666; white-space: nowrap;'>{phonetic}{audio_player}</td><td style='padding: 12px 16px; color: #2C3E50;'>{translation}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{tags}</span></td><td style='padding: 12px 16px; color: #555;'>{memory_tip}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{usage_examples}</td></tr>"
@@ -598,7 +600,6 @@ elif page == "🔍 智能精读教研室":
                 <div style='font-family: Times New Roman; font-size:1.05em; font-weight:bold;'>[{i+1}] {s.get('en','')}</div><div style='color:#555; font-size:0.95em;'>译：{s.get('cn','')}</div>
                 <div style='font-size:0.9em; margin-top:4px;'><span style='color:#1F4E79;'>🔍 语法：</span>{s.get('syntax','')}</div><div style='font-size:0.9em;'><span style='color:#C00000;'>💡 词法：</span>{s.get('words','')}</div></div>""", unsafe_allow_html=True)
         
-        # 🌟 修复：文章解析完毕后，底部调用防崩溃原生词汇表
         v_list = res.get('core_vocabulary', [])
         if v_list:
             st.markdown("### 📚 核心词汇表")
@@ -638,7 +639,6 @@ elif page == "🗂️ 文章分类档案馆":
                             st.markdown("##### 📰 原文/摘抄"); st.markdown(f"<div style='background-color:#F5F7EC; padding:12px; border-radius:6px; border:1px solid #D8DFD0; max-height:120px; overflow-y:auto; margin-bottom:15px;'>{selected_art.get('content','')}</div>", unsafe_allow_html=True)
                             st.markdown("##### 🔬 逐句解析"); st.markdown(f"<div style='background-color:#F5F7EC; padding:16px; border-radius:6px; border:1px solid #D8DFD0; white-space:pre-wrap;'>{selected_art.get('teaching_plan','').strip()}</div>", unsafe_allow_html=True)
                             
-                            # 🌟 修复：展示该文章专属的核心词汇表 (防崩溃原生播放器)
                             if full_analysis and full_analysis.get('core_vocabulary'):
                                 st.markdown("##### 📚 核心词汇表")
                                 render_html_vocab_table(full_analysis.get('core_vocabulary'))
@@ -710,8 +710,6 @@ elif page == "🔠 词库与大纲":
                 else:
                     cat_filter = st.radio("🎓 分类筛选", ["全部"] + list(df_vocab['tags'].dropna().unique()), horizontal=True, label_visibility="collapsed")
                     display_df = df_vocab[df_vocab['tags'] == cat_filter] if cat_filter != "全部" else df_vocab
-                    
-                    # 🌟 统一调用防崩溃渲染器
                     render_html_vocab_table(display_df)
                 
             else: st.info("📓 词汇库还是空的，快去阅读文章添加生词吧！")
@@ -764,7 +762,6 @@ elif page == "🔠 词库与大纲":
                                 supabase.table('vocabulary').insert(v).execute()
                             st.success("✅ 导入成功！快去【我的私人生词本】复习吧！")
                     
-                    # 🌟 统一调用防崩溃渲染器
                     render_html_vocab_table(vocab_json)
                 except: st.error("词库格式异常。")
             else:
