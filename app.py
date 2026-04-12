@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components 
 import json
 import pandas as pd
 import trafilatura
@@ -191,7 +192,6 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-# 🌟 查词卡片渲染器
 def render_dictionary_card(word_data):
     word = safe_str(word_data.get('word', ''))
     phonetic = safe_str(word_data.get('phonetic', ''))
@@ -213,9 +213,7 @@ def render_dictionary_card(word_data):
     """
     st.markdown(dict_html, unsafe_allow_html=True)
 
-# 🌟 全局词汇表渲染引擎 (极致修复 Pandas DataFrame 的判空报错)
 def render_html_vocab_table(v_list):
-    # 修复地雷：安全检查传入的是否为空数据
     if isinstance(v_list, pd.DataFrame):
         if v_list.empty: return
         v_list = v_list.fillna('').to_dict('records')
@@ -236,7 +234,6 @@ def render_html_vocab_table(v_list):
         
         safe_word = urllib.parse.quote(word).replace("'", "%27")
         audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-        # 原生HTML5防拦截音频控件
         audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_link}' type='audio/mpeg'></audio>"
         
         html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='padding: 12px 16px; color: #666; white-space: nowrap;'>{phonetic}{audio_player}</td><td style='padding: 12px 16px; color: #2C3E50;'>{translation}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{tags}</span></td><td style='padding: 12px 16px; color: #555;'>{memory_tip}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{usage_examples}</td></tr>"
@@ -558,7 +555,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室
+# 🔍 模块：教研室 (🌟 史诗级升级：AI 沉浸式图文教学设计)
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -568,19 +565,65 @@ elif page == "🔍 智能精读教研室":
         if st.button("🛰️ 提取网页", use_container_width=True):
             if url: st.session_state['temp_text'] = fetch_text_smart(url)
     
-    final_text = st.text_area("📝 待分析文本：", value=st.session_state.get('temp_text', ""), height=200)
+    final_text = st.text_area("📝 待分析/教学文本：", value=st.session_state.get('temp_text', ""), height=150)
     
-    if st.button("🧠 生成专家级教案", type="primary"):
+    # 🌟 双引擎驱动架构
+    btn_col1, btn_col2 = st.columns(2)
+    with btn_col1:
+        btn_parse = st.button("🧠 生成逐句精读与词汇库", type="primary", use_container_width=True)
+    with btn_col2:
+        btn_teach = st.button("🧑‍🏫 生成 AI 沉浸式教学设计 (带动态配图)", type="primary", use_container_width=True)
+    
+    # --- 引擎 1：传统的精读与词汇解析 ---
+    if btn_parse:
         if not final_text.strip(): st.error("请先输入文本")
         else:
-            with st.spinner("AI正在切片..."):
+            with st.spinner("AI 正在深度切片文章..."):
                 prompt = f"""以JSON格式输出全句拆解：{{"sentences": [{{"en": "原句英文", "cn": "翻译", "syntax": "极简语法", "words": "核心词法"}}], "core_vocabulary": [{{"word": "单词", "phonetic": "音标", "translation": "释义", "memory_tip": "记忆法", "usage_examples": "造句", "tags": "级别"}}]}} 待分析：\n{final_text[:5000]}""" 
                 try:
                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
-                    st.session_state['analysis_result'] = json.loads(res.choices[0].message.content); st.session_state['article_content'] = final_text; st.rerun()
+                    st.session_state['analysis_result'] = json.loads(res.choices[0].message.content)
+                    st.session_state['article_content'] = final_text
+                    st.session_state['analysis_mode'] = 'parse' # 记录当前模式
+                    st.rerun()
                 except Exception: st.error("分析失败")
 
-    if 'analysis_result' in st.session_state:
+    # --- 引擎 2：全新的 AI 教学设计引擎 ---
+    if btn_teach:
+        if not final_text.strip(): st.error("请先输入文本")
+        else:
+            with st.spinner("🧑‍🏫 AI 专家正在为您撰写教学方案，并实时绘制 PPT 级配图，请稍候..."):
+                prompt = f"""你是一位拥有20年经验的顶级英语教研专家。请根据以下英文文本，为教师设计一堂结构完整、极具启发性和沉浸感的英语阅读教学全过程。
+                必须严格返回纯JSON格式数据。格式如下：
+                {{
+                  "topic": "引人入胜的课程主题",
+                  "objectives": ["目标1", "目标2", "目标3"],
+                  "teaching_steps": [
+                    {{
+                      "step_name": "环节名称 (如: 1. Lead-in 奇妙导入)",
+                      "duration": "时长 (如: 5 mins)",
+                      "activity": "详细的教师活动与学生互动设计",
+                      "script": "地道、富有感染力的全英文教师开场/引导话术",
+                      "image_keyword": "用一句极其详细的纯英文Prompt描述这个教学环节的视觉画面(例如: A high quality cinematic photo of students exploring a mysterious cave, lighting, 8k)。这个Prompt将用于AI直接生成精美配图。"
+                    }}
+                  ]
+                }}
+                注意：步骤必须包含 Lead-in(导入), Pre-reading(读前), While-reading(读中), Post-reading(读后/讨论), Homework(作业)。
+                待分析文本：\n{final_text[:5000]}""" 
+                try:
+                    res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
+                    st.session_state['teaching_design'] = json.loads(res.choices[0].message.content)
+                    st.session_state['analysis_mode'] = 'teach'
+                    st.rerun()
+                except Exception: st.error("教学设计生成失败")
+
+    # ==========================
+    # 渲染区：根据用户选择展示不同结果
+    # ==========================
+    current_mode = st.session_state.get('analysis_mode', None)
+    
+    # --- 渲染：精读解析 ---
+    if current_mode == 'parse' and 'analysis_result' in st.session_state:
         res = st.session_state['analysis_result']; st.divider()
         c1, c2, c3 = st.columns(3)
         with c1: st.download_button("📝 导出 Word", data=generate_beautiful_word(res, st.session_state.get('article_content', '')), file_name="教案.docx", use_container_width=True)
@@ -604,6 +647,35 @@ elif page == "🔍 智能精读教研室":
         if v_list:
             st.markdown("### 📚 核心词汇表")
             render_html_vocab_table(v_list)
+
+    # --- 渲染：AI 教学设计 ---
+    elif current_mode == 'teach' and 'teaching_design' in st.session_state:
+        design = st.session_state['teaching_design']
+        st.divider()
+        
+        # 顶部标题与目标面板
+        st.markdown(f"<div style='background-color:#1A1E2A; color:white; padding:30px; border-radius:12px; text-align:center;'><h2 style='color:white; margin-bottom:15px;'>🎯 {design.get('topic', 'English Lesson')}</h2><p style='color:#8892B0; font-size:1.1em;'>AI Powered Immersive Teaching Design</p></div>", unsafe_allow_html=True)
+        
+        st.markdown("#### 📌 教学目标 (Teaching Objectives)")
+        for obj in design.get('objectives', []):
+            st.markdown(f"- ✅ {obj}")
+        st.write("---")
+        
+        # 逐个渲染教学步骤，并使用 Pollinations 实时生成精美配图
+        for step in design.get('teaching_steps', []):
+            st.markdown(f"### {step.get('step_name')} <span style='font-size:0.6em; color:#8892B0; font-weight:normal;'>⏱️ {step.get('duration')}</span>", unsafe_allow_html=True)
+            
+            # 🎨 调用 AI 绘画引擎获取配图 (即时生成，无版权，高清)
+            img_kw = step.get('image_keyword', '')
+            if img_kw:
+                safe_kw = urllib.parse.quote(img_kw)
+                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=900&height=350&nologo=true"
+                st.markdown(f"<div style='width:100%; border-radius:12px; overflow:hidden; margin-bottom:20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);'><img src='{img_url}' style='width:100%; object-fit:cover; display:block;'></div>", unsafe_allow_html=True)
+            
+            # 步骤内容
+            st.markdown(f"**💡 教学活动设计：**\n\n{step.get('activity')}")
+            st.markdown(f"<div style='background-color:#EBF0E5; padding:15px 20px; border-left:4px solid #3A5F40; border-radius:4px; color:#2C3E50; font-style:italic;'><b>🗣️ Teacher's Script (全英文示范话术):</b><br><br>\"{step.get('script')}\"</div>", unsafe_allow_html=True)
+            st.write("---")
 
 # ==========================================
 # 🗂️ 档案馆
