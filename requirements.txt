@@ -1,10 +1,11 @@
 streamlit
+pandas
+trafilatura
+python-docx
 openai
 supabase
-trafilatura
-pandas
-python-docx
 pypdf
-python-docx
-extra-streamlit-components
 openpyxl
+extra-streamlit-components
+python-pptx
+requests
