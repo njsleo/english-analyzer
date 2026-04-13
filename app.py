@@ -153,95 +153,83 @@ def generate_beautiful_word(analysis_data, full_text=""):
 def generate_beautiful_ppt(design_data):
     prs = Presentation()
     
-    # 1. 封面
+    # 1. 封面 (极简大字)
     slide = prs.slides.add_slide(prs.slide_layouts[0])
     slide.shapes.title.text = design_data.get('topic', 'English Lesson')
-    slide.placeholders[1].text = "AI Powered Immersive Teaching Design\nPowered by Expert Teacher System"
+    slide.placeholders[1].text = "Immersive Reading Lesson"
 
-    # 2. 教学目标
+    # 2. 教学目标 (隐藏对老师的要求，只展示学生要达成的目标)
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "🎯 Teaching Objectives"
+    slide.shapes.title.text = "🎯 Focus of Today"
     tf = slide.placeholders[1].text_frame
     for obj in design_data.get('objectives', []):
-        tf.add_paragraph().text = f"✅ {obj}"
+        tf.add_paragraph().text = f"⭐ {obj}"
 
-    # 3. 板书设计
-    slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "🗺️ Boardwork Design"
-    tf = slide.placeholders[1].text_frame
-    bw = design_data.get('boardwork', {})
-    tf.text = f"Main Idea: {bw.get('main_idea', '')}"
-    for point in bw.get('structure_map', []):
-        p = tf.add_paragraph()
-        p.text = point
-        p.level = 1
-        
-    # 4. 教学环节 (带配图抓取)
+    # 3. 动态教学环节 (🌟 核心爆改：大屏给学生看，话术藏进备注给老师看！)
     for step in design_data.get('teaching_steps', []):
-        slide = prs.slides.add_slide(prs.slide_layouts[5]) # 标题页
-        slide.shapes.title.text = f"{step.get('step_name')} ({step.get('duration')})"
+        # 使用只有标题的空白模板，留出巨大空间给图片和核心问题
+        slide = prs.slides.add_slide(prs.slide_layouts[5]) 
+        slide.shapes.title.text = f"✨ {step.get('step_name')}"
         
+        # 抓取高清配图放在正中间
         img_kw = step.get('image_keyword', '')
-        img_success = False
         if img_kw:
             try:
                 safe_kw = urllib.parse.quote(img_kw)
                 img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=800&height=400&nologo=true"
-                # 请求获取图片，超时5秒防止卡死
                 resp = requests.get(img_url, timeout=5) 
                 if resp.status_code == 200:
                     img_stream = io.BytesIO(resp.content)
                     slide.shapes.add_picture(img_stream, Inches(1), Inches(1.5), width=Inches(8))
-                    img_success = True
-            except:
-                pass
-        
-        # 插入内容文本框
-        top_margin = Inches(5.6) if img_success else Inches(2.0)
-        txBox = slide.shapes.add_textbox(Inches(0.5), top_margin, Inches(9), Inches(1.5))
-        tf = txBox.text_frame
-        tf.word_wrap = True
-        p1 = tf.add_paragraph()
-        p1.text = f"💡 Activity: {step.get('activity')}"
-        p1.font.size = Ptx(14)
-        
-        p2 = tf.add_paragraph()
-        p2.text = f"🗣️ Script: {step.get('script')}"
-        p2.font.size = Ptx(14)
-        p2.font.color.rgb = PtxRGBColor(0x3A, 0x5F, 0x40)
+            except: pass
+            
+        # 🌟 魔法在这里：把 Activity 和 Script 写进 PPT 的演讲者备注(Notes)里！
+        notes_slide = slide.notes_slide
+        text_frame = notes_slide.notes_text_frame
+        text_frame.text = f"【老师请看这里】\n\n⏱️ Time: {step.get('duration')}\n\n💡 Activity: {step.get('activity')}\n\n🗣️ Script:\n{step.get('script')}"
 
-    # 5. CCQs
+    # 4. 互动提问环节 (只放问题，不放答案)
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "❓ CCQs & Reading Comprehension"
+    slide.shapes.title.text = "❓ Let's Think..."
     tf = slide.placeholders[1].text_frame
+    notes_text = "【老师专用答案解析】\n\n"
     for q in design_data.get('ccqs_questions', []):
-        tf.add_paragraph().text = f"🗣️ Q: {q.get('question')}"
-        p = tf.add_paragraph()
-        p.text = f"💡 A: {q.get('answer')}"
-        p.level = 1
+        tf.add_paragraph().text = f"🤔 {q.get('question')}"
+        tf.add_paragraph().text = "" # 空一行
+        # 将答案写进备注
+        notes_text += f"Q: {q.get('question')}\nA: {q.get('answer')}\n\n"
+    slide.notes_slide.notes_text_frame.text = notes_text
 
-    # 6. Mini Quiz
+    # 5. 随堂小测 (排版清爽)
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "📝 Mini-Quiz"
+    slide.shapes.title.text = "📝 Challenge Time!"
     tf = slide.placeholders[1].text_frame
+    notes_text_quiz = "【随堂测验答案】\n\n"
     for idx, mq in enumerate(design_data.get('mini_quiz', [])):
-        tf.add_paragraph().text = f"Q{idx+1} [{mq.get('type')}]: {mq.get('question')}"
+        tf.add_paragraph().text = f"Q{idx+1}: {mq.get('question')}"
         if mq.get('options') and mq.get('options') != "无":
             p = tf.add_paragraph()
-            p.text = f"Options: {mq.get('options')}"
-            p.level = 1
-        p_ans = tf.add_paragraph()
-        p_ans.text = f"🔑 Key: {mq.get('answer')}"
-        p_ans.level = 1
+            p.text = f"    {mq.get('options')}"
+            p.font.size = Ptx(18)
+            p.font.color.rgb = PtxRGBColor(0x55, 0x55, 0x55)
+        # 答案写进备注
+        notes_text_quiz += f"Q{idx+1} Key: {mq.get('answer')}\n"
+    slide.notes_slide.notes_text_frame.text = notes_text_quiz
 
-    # 7. Homework
+    # 6. 菜单式分层作业 
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "📶 Differentiated Homework"
+    slide.shapes.title.text = "🏆 Mission Menu (Choose your task)"
     tf = slide.placeholders[1].text_frame
     hw = design_data.get('differentiated_homework', {})
-    tf.add_paragraph().text = f"🟢 Level A (Foundation): {hw.get('level_A', '')}"
-    tf.add_paragraph().text = f"🟡 Level B (Core): {hw.get('level_B', '')}"
-    tf.add_paragraph().text = f"🔴 Level C (Challenge): {hw.get('level_C', '')}"
+    
+    p1 = tf.add_paragraph()
+    p1.text = f"🟢 One-Star Mission: \n   {hw.get('level_A', '')}"
+    
+    p2 = tf.add_paragraph()
+    p2.text = f"🟡 Two-Star Mission: \n   {hw.get('level_B', '')}"
+    
+    p3 = tf.add_paragraph()
+    p3.text = f"🔴 Three-Star Mission: \n   {hw.get('level_C', '')}"
 
     bio = io.BytesIO()
     prs.save(bio)
