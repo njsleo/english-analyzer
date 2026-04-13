@@ -11,11 +11,15 @@ import re
 import hashlib
 import urllib.parse
 import base64
+import requests
 import extra_streamlit_components as esc
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn, nsdecls
+from pptx import Presentation
+from pptx.util import Inches, Pt as Ptx
+from pptx.dml.color import RGBColor as PtxRGBColor
 from openai import OpenAI
 from supabase import create_client, Client
 from pypdf import PdfReader
@@ -144,6 +148,104 @@ def generate_beautiful_word(analysis_data, full_text=""):
         for v in v_list:
             row = table.add_row().cells; row[0].text, row[1].text, row[2].text, row[3].text = v.get('word',''), v.get('phonetic',''), v.get('translation',''), v.get('usage_examples','')
     bio = io.BytesIO(); doc.save(bio); return bio.getvalue()
+
+# 🌟 全新核武器：一键生成精美幻灯片 (PPT)
+def generate_beautiful_ppt(design_data):
+    prs = Presentation()
+    
+    # 1. 封面
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+    slide.shapes.title.text = design_data.get('topic', 'English Lesson')
+    slide.placeholders[1].text = "AI Powered Immersive Teaching Design\nPowered by Expert Teacher System"
+
+    # 2. 教学目标
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "🎯 Teaching Objectives"
+    tf = slide.placeholders[1].text_frame
+    for obj in design_data.get('objectives', []):
+        tf.add_paragraph().text = f"✅ {obj}"
+
+    # 3. 板书设计
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "🗺️ Boardwork Design"
+    tf = slide.placeholders[1].text_frame
+    bw = design_data.get('boardwork', {})
+    tf.text = f"Main Idea: {bw.get('main_idea', '')}"
+    for point in bw.get('structure_map', []):
+        p = tf.add_paragraph()
+        p.text = point
+        p.level = 1
+        
+    # 4. 教学环节 (带配图抓取)
+    for step in design_data.get('teaching_steps', []):
+        slide = prs.slides.add_slide(prs.slide_layouts[5]) # 标题页
+        slide.shapes.title.text = f"{step.get('step_name')} ({step.get('duration')})"
+        
+        img_kw = step.get('image_keyword', '')
+        img_success = False
+        if img_kw:
+            try:
+                safe_kw = urllib.parse.quote(img_kw)
+                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=800&height=400&nologo=true"
+                # 请求获取图片，超时5秒防止卡死
+                resp = requests.get(img_url, timeout=5) 
+                if resp.status_code == 200:
+                    img_stream = io.BytesIO(resp.content)
+                    slide.shapes.add_picture(img_stream, Inches(1), Inches(1.5), width=Inches(8))
+                    img_success = True
+            except:
+                pass
+        
+        # 插入内容文本框
+        top_margin = Inches(5.6) if img_success else Inches(2.0)
+        txBox = slide.shapes.add_textbox(Inches(0.5), top_margin, Inches(9), Inches(1.5))
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p1 = tf.add_paragraph()
+        p1.text = f"💡 Activity: {step.get('activity')}"
+        p1.font.size = Ptx(14)
+        
+        p2 = tf.add_paragraph()
+        p2.text = f"🗣️ Script: {step.get('script')}"
+        p2.font.size = Ptx(14)
+        p2.font.color.rgb = PtxRGBColor(0x3A, 0x5F, 0x40)
+
+    # 5. CCQs
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "❓ CCQs & Reading Comprehension"
+    tf = slide.placeholders[1].text_frame
+    for q in design_data.get('ccqs_questions', []):
+        tf.add_paragraph().text = f"🗣️ Q: {q.get('question')}"
+        p = tf.add_paragraph()
+        p.text = f"💡 A: {q.get('answer')}"
+        p.level = 1
+
+    # 6. Mini Quiz
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "📝 Mini-Quiz"
+    tf = slide.placeholders[1].text_frame
+    for idx, mq in enumerate(design_data.get('mini_quiz', [])):
+        tf.add_paragraph().text = f"Q{idx+1} [{mq.get('type')}]: {mq.get('question')}"
+        if mq.get('options') and mq.get('options') != "无":
+            p = tf.add_paragraph()
+            p.text = f"Options: {mq.get('options')}"
+            p.level = 1
+        p_ans = tf.add_paragraph()
+        p_ans.text = f"🔑 Key: {mq.get('answer')}"
+        p_ans.level = 1
+
+    # 7. Homework
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "📶 Differentiated Homework"
+    tf = slide.placeholders[1].text_frame
+    hw = design_data.get('differentiated_homework', {})
+    tf.add_paragraph().text = f"🟢 Level A (Foundation): {hw.get('level_A', '')}"
+    tf.add_paragraph().text = f"🟡 Level B (Core): {hw.get('level_B', '')}"
+    tf.add_paragraph().text = f"🔴 Level C (Challenge): {hw.get('level_C', '')}"
+
+    bio = io.BytesIO()
+    prs.save(bio)
+    return bio.getvalue()
 
 def fetch_text_smart(url): 
     try: return trafilatura.extract(trafilatura.fetch_url(url)) if trafilatura.fetch_url(url) else "⚠️ 未能识别正文"
@@ -539,7 +641,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室 (🌟 史诗级 AI 特级教师备课系统)
+# 🔍 模块：教研室
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -557,7 +659,6 @@ elif page == "🔍 智能精读教研室":
     with btn_col2:
         btn_teach = st.button("🧑‍🏫 生成 AI 特级名师备课系统 (全套)", type="primary", use_container_width=True)
     
-    # --- 引擎 1：精读解析 ---
     if btn_parse:
         if not final_text.strip(): st.error("请先输入文本")
         else:
@@ -571,12 +672,10 @@ elif page == "🔍 智能精读教研室":
                     st.rerun()
                 except Exception: st.error("分析失败")
 
-    # --- 引擎 2：全套 AI 名师备课引擎 ---
     if btn_teach:
         if not final_text.strip(): st.error("请先输入文本")
         else:
             with st.spinner("🧑‍🏫 AI 特级教师正在为您规划板书、提问、小测与作业，请稍候..."):
-                # 🌟 核心：史诗级 Prompt，加入四大刚需教研模块
                 prompt = f"""你是一位拥有20年经验的特级英语教研组长。请根据以下英文文本，为教师设计一堂极具启发性的英语教学全案。
                 必须严格返回纯JSON格式数据。格式如下：
                 {{
@@ -646,7 +745,6 @@ elif page == "🔍 智能精读教研室":
             st.markdown("### 📚 核心词汇表")
             render_html_vocab_table(v_list)
 
-    # --- 🌟 渲染：AI 特级名师备课系统 (排版全面升级) ---
     elif current_mode == 'teach' and 'teaching_design' in st.session_state:
         design = st.session_state['teaching_design']
         st.divider()
@@ -654,8 +752,17 @@ elif page == "🔍 智能精读教研室":
         # 1. 顶部标题
         st.markdown(f"<div style='background-color:#1A1E2A; color:white; padding:30px; border-radius:12px; text-align:center;'><h2 style='color:white; margin-bottom:15px;'>🎯 {design.get('topic', 'English Lesson')}</h2><p style='color:#8892B0; font-size:1.1em;'>AI Powered Immersive Teaching Design</p></div>", unsafe_allow_html=True)
         
-        col_L, col_R = st.columns([1, 1], gap="large")
+        # 🌟 核心：一键导出 PPT 按钮
+        col_dl_1, col_dl_2, col_dl_3 = st.columns([1.5, 2, 1.5])
+        with col_dl_2:
+            st.write("")
+            with st.spinner("正在将教案打包为高清 PPT，请稍候..."):
+                ppt_bytes = generate_beautiful_ppt(design)
+            st.download_button("📥 一键导出精美教学 PPT (含配图)", data=ppt_bytes, file_name=f"AI_Lesson_Plan_{design.get('topic', 'Lesson')}.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True, type="primary")
         
+        st.write("---")
+
+        col_L, col_R = st.columns([1, 1], gap="large")
         with col_L:
             st.markdown("#### 📌 教学目标 (Objectives)")
             st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
@@ -664,7 +771,6 @@ elif page == "🔍 智能精读教研室":
             st.markdown("</div>", unsafe_allow_html=True)
 
         with col_R:
-            # 🌟 模块1：结构化板书设计 (UI精修)
             st.markdown("#### 🗺️ 板书结构 (Boardwork)")
             st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
             bw = design.get('boardwork', {})
@@ -675,10 +781,8 @@ elif page == "🔍 智能精读教研室":
             
         st.write("---")
         
-        # 2. 教学步骤与动态配图
         for step in design.get('teaching_steps', []):
             st.markdown(f"### {step.get('step_name')} <span style='font-size:0.6em; color:#8892B0; font-weight:normal;'>⏱️ {step.get('duration')}</span>", unsafe_allow_html=True)
-            
             img_kw = step.get('image_keyword', '')
             if img_kw:
                 safe_kw = urllib.parse.quote(img_kw)
@@ -689,17 +793,13 @@ elif page == "🔍 智能精读教研室":
             st.markdown(f"<div style='background-color:#EBF0E5; padding:15px 20px; border-left:4px solid #3A5F40; border-radius:4px; color:#2C3E50; font-style:italic; margin-bottom: 20px;'><b>🗣️ Teacher's Script:</b><br><br>\"{step.get('script')}\"</div>", unsafe_allow_html=True)
             
         st.write("---")
-        
         col_Q, col_H = st.columns([1, 1], gap="large")
-        
         with col_Q:
-            # 🌟 模块2：夺命连环追问
             st.markdown("#### ❓ 课堂互动提问 (CCQs)")
             for q in design.get('ccqs_questions', []):
                 with st.expander(f"🗣️ {q.get('question')}"):
                     st.markdown(f"**💡 Answer:** {q.get('answer')}")
             
-            # 🌟 模块3：随堂实战小测 (排版精修版)
             st.markdown("<br>#### 📝 随堂小测 (Mini-Quiz)", unsafe_allow_html=True)
             st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
             for idx, mq in enumerate(design.get('mini_quiz', [])):
@@ -712,7 +812,6 @@ elif page == "🔍 智能精读教研室":
             st.markdown("</div>", unsafe_allow_html=True)
 
         with col_H:
-            # 🌟 模块4：分层作业设计 (高级视觉排版)
             st.markdown("#### 📶 分层作业设计 (Differentiated HW)")
             hw = design.get('differentiated_homework', {})
             st.markdown(f"""
