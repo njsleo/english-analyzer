@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components 
 import json
 import pandas as pd
 import trafilatura
@@ -19,6 +20,8 @@ from docx.oxml.ns import qn, nsdecls
 from pptx import Presentation
 from pptx.util import Inches, Pt as Ptx
 from pptx.dml.color import RGBColor as PtxRGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
 from openai import OpenAI
 from supabase import create_client, Client
 from pypdf import PdfReader
@@ -148,81 +151,255 @@ def generate_beautiful_word(analysis_data, full_text=""):
             row = table.add_row().cells; row[0].text, row[1].text, row[2].text, row[3].text = v.get('word',''), v.get('phonetic',''), v.get('translation',''), v.get('usage_examples','')
     bio = io.BytesIO(); doc.save(bio); return bio.getvalue()
 
+# 🌟 核心：全新 16:9 商业级 PPT 渲染引擎 (视觉爆改版)
 def generate_beautiful_ppt(design_data):
     prs = Presentation()
-    
-    # 1. 封面 (极简大字)
-    slide = prs.slides.add_slide(prs.slide_layouts[0])
-    slide.shapes.title.text = design_data.get('topic', 'English Lesson')
-    slide.placeholders[1].text = "Immersive Reading Lesson\nPowered by Expert Teacher System"
+    # 设置为现代 16:9 宽屏
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
 
-    # 2. 教学目标 (隐藏对老师的要求，只展示学生要达成的目标)
-    slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "🎯 Focus of Today"
-    tf = slide.placeholders[1].text_frame
-    for obj in design_data.get('objectives', []):
-        tf.add_paragraph().text = f"⭐ {obj}"
+    # 🌟 顶配视觉色彩系统
+    NAVY = PtxRGBColor(0x1A, 0x1E, 0x2A)
+    WHITE = PtxRGBColor(0xFF, 0xFF, 0xFF)
+    GREEN = PtxRGBColor(0x3A, 0x5F, 0x40)
+    BG_LIGHT = PtxRGBColor(0xF5, 0xF7, 0xEC)
+    GOLD = PtxRGBColor(0xD4, 0x8A, 0x00)
+    RED = PtxRGBColor(0xC0, 0x00, 0x00)
+    GRAY = PtxRGBColor(0x66, 0x66, 0x66)
 
-    # 3. 动态教学环节 (核心爆改：大屏给学生看，话术藏进备注给老师看)
-    for step in design_data.get('teaching_steps', []):
-        slide = prs.slides.add_slide(prs.slide_layouts[5]) 
-        slide.shapes.title.text = f"✨ {step.get('step_name')}"
+    def set_slide_bg(slide, color):
+        bg = slide.background
+        fill = bg.fill
+        fill.solid()
+        fill.fore_color.rgb = color
+
+    def add_header(slide, title, subtitle=""):
+        # 顶部深色通栏
+        header_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(1.2))
+        header_shape.fill.solid()
+        header_shape.fill.fore_color.rgb = NAVY
+        header_shape.line.color.rgb = NAVY
         
+        txBox = slide.shapes.add_textbox(Inches(0.5), Inches(0.1), Inches(12), Inches(1))
+        tf = txBox.text_frame
+        p = tf.paragraphs[0]
+        p.text = title
+        p.font.size = Ptx(36)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        if subtitle:
+            p2 = tf.add_paragraph()
+            p2.text = subtitle
+            p2.font.size = Ptx(18)
+            p2.font.color.rgb = GOLD
+
+    # ==========================
+    # Slide 1: 封面页 (暗黑高级感)
+    # ==========================
+    slide_title = prs.slides.add_slide(prs.slide_layouts[6]) # 空白模板
+    set_slide_bg(slide_title, NAVY)
+    
+    txBox = slide_title.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11.333), Inches(2))
+    tf = txBox.text_frame
+    p = tf.paragraphs[0]
+    p.text = design_data.get('topic', 'English Lesson')
+    p.font.size = Ptx(54)
+    p.font.bold = True
+    p.font.color.rgb = WHITE
+    p.alignment = PP_ALIGN.CENTER
+    
+    p2 = tf.add_paragraph()
+    p2.text = "\nAI Powered Immersive Teaching Design\nPowered by Expert Teacher System"
+    p2.font.size = Ptx(24)
+    p2.font.color.rgb = GOLD
+    p2.alignment = PP_ALIGN.CENTER
+
+    # ==========================
+    # Slide 2: 教学目标 (极简卡片)
+    # ==========================
+    slide_obj = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide_obj, BG_LIGHT)
+    add_header(slide_obj, "🎯 Teaching Objectives", "Empowering Students with Language Mastery")
+    
+    top_offset = 1.8
+    for i, obj in enumerate(design_data.get('objectives', [])):
+        shape = slide_obj.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(top_offset), Inches(11.333), Inches(1.2))
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = WHITE
+        shape.line.color.rgb = GREEN
+        
+        tf = shape.text_frame
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        p = tf.paragraphs[0]
+        p.text = f"✅ {obj}"
+        p.font.size = Ptx(24)
+        p.font.color.rgb = NAVY
+        top_offset += 1.5
+
+    # ==========================
+    # Slide 3: 板书设计 (结构树)
+    # ==========================
+    slide_bw = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide_bw, BG_LIGHT)
+    add_header(slide_bw, "🗺️ Boardwork Design", "Mapping the core structure")
+    
+    bw = design_data.get('boardwork', {})
+    shape_mi = slide_bw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(1.5), Inches(11.333), Inches(1.5))
+    shape_mi.fill.solid()
+    shape_mi.fill.fore_color.rgb = NAVY
+    tf_mi = shape_mi.text_frame
+    p_mi = tf_mi.paragraphs[0]
+    p_mi.text = "💡 Main Idea"
+    p_mi.font.size = Ptx(24)
+    p_mi.font.color.rgb = GOLD
+    p_mi.font.bold = True
+    p_mi2 = tf_mi.add_paragraph()
+    p_mi2.text = bw.get('main_idea', '')
+    p_mi2.font.size = Ptx(20)
+    p_mi2.font.color.rgb = WHITE
+
+    top_offset = 3.3
+    for point in bw.get('structure_map', []):
+        shape_pt = slide_bw.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.5), Inches(top_offset), Inches(10.333), Inches(0.8))
+        shape_pt.fill.solid()
+        shape_pt.fill.fore_color.rgb = WHITE
+        shape_pt.line.color.rgb = NAVY
+        tf_pt = shape_pt.text_frame
+        tf_pt.vertical_anchor = MSO_ANCHOR.MIDDLE
+        p_pt = tf_pt.paragraphs[0]
+        p_pt.text = f"📌 {point}"
+        p_pt.font.size = Ptx(20)
+        p_pt.font.color.rgb = NAVY
+        top_offset += 1.0
+
+    # ==========================
+    # Slide 4+: 教学环节 (左文字，右 8K 满屏大图)
+    # ==========================
+    for step in design_data.get('teaching_steps', []):
+        slide_step = prs.slides.add_slide(prs.slide_layouts[6])
+        set_slide_bg(slide_step, BG_LIGHT)
+        add_header(slide_step, f"✨ {step.get('step_name')}", f"⏱️ Time: {step.get('duration')}")
+        
+        # 左侧内容区
+        txBox = slide_step.shapes.add_textbox(Inches(0.5), Inches(2.0), Inches(5), Inches(5.0))
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = "💡 Activity Focus:"
+        p.font.size = Ptx(28)
+        p.font.bold = True
+        p.font.color.rgb = NAVY
+        
+        p2 = tf.add_paragraph()
+        p2.text = f"\n{step.get('activity', '')}"
+        p2.font.size = Ptx(22)
+        p2.font.color.rgb = NAVY
+
+        # 🖼️ 右侧自动抓取 8K 配图
         img_kw = step.get('image_keyword', '')
         if img_kw:
             try:
                 safe_kw = urllib.parse.quote(img_kw)
-                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=800&height=400&nologo=true"
-                resp = requests.get(img_url, timeout=5) 
+                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=1200&height=800&nologo=true"
+                resp = requests.get(img_url, timeout=8) 
                 if resp.status_code == 200:
                     img_stream = io.BytesIO(resp.content)
-                    slide.shapes.add_picture(img_stream, Inches(1), Inches(1.5), width=Inches(8))
+                    slide_step.shapes.add_picture(img_stream, Inches(5.8), Inches(1.8), width=Inches(7))
             except: pass
-            
-        notes_slide = slide.notes_slide
-        text_frame = notes_slide.notes_text_frame
-        text_frame.text = f"【老师请看这里】\n\n⏱️ Time: {step.get('duration')}\n\n💡 Activity: {step.get('activity')}\n\n🗣️ Script:\n{step.get('script')}"
 
-    # 4. 互动提问环节 (只放问题，答案在备注)
-    slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "❓ Let's Think..."
-    tf = slide.placeholders[1].text_frame
-    notes_text = "【老师专用答案解析】\n\n"
+        # 🌟 魔法：将话术藏入演讲者备注
+        notes_slide = slide_step.notes_slide
+        notes_tf = notes_slide.notes_text_frame
+        notes_tf.text = f"【TEACHER'S SCRIPT (教师专享话术)】\n\n{step.get('script')}"
+
+    # ==========================
+    # Slide CCQ: 课堂追问 (悬念排版，答案进备注)
+    # ==========================
+    slide_ccq = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide_ccq, BG_LIGHT)
+    add_header(slide_ccq, "❓ Let's Think...", "Classroom Interaction")
+    
+    top_offset = 1.5
+    notes_text = "【ANSWERS (教师标准答案)】\n\n"
     for q in design_data.get('ccqs_questions', []):
-        tf.add_paragraph().text = f"🤔 {q.get('question')}"
-        tf.add_paragraph().text = "" 
+        shape = slide_ccq.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(top_offset), Inches(11.333), Inches(1.5))
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = NAVY
+        tf = shape.text_frame
+        tf.word_wrap = True
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        p = tf.paragraphs[0]
+        p.text = f"🤔 {q.get('question')}"
+        p.font.size = Ptx(28)
+        p.font.color.rgb = WHITE
+        top_offset += 1.8
         notes_text += f"Q: {q.get('question')}\nA: {q.get('answer')}\n\n"
-    slide.notes_slide.notes_text_frame.text = notes_text
+    
+    slide_ccq.notes_slide.notes_text_frame.text = notes_text
 
-    # 5. 随堂小测 (排版清爽)
-    slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "📝 Challenge Time!"
-    tf = slide.placeholders[1].text_frame
-    notes_text_quiz = "【随堂测验答案】\n\n"
+    # ==========================
+    # Slide Quiz: 随堂测验 (极简纯白卡)
+    # ==========================
+    slide_quiz = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide_quiz, BG_LIGHT)
+    add_header(slide_quiz, "📝 Challenge Time!", "Quick Assessment")
+    
+    top_offset = 1.5
+    notes_text_quiz = "【QUIZ ANSWERS (测验答案)】\n\n"
     for idx, mq in enumerate(design_data.get('mini_quiz', [])):
-        tf.add_paragraph().text = f"Q{idx+1}: {mq.get('question')}"
+        txBox = slide_quiz.shapes.add_textbox(Inches(1), Inches(top_offset), Inches(11.333), Inches(1.5))
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = f"Q{idx+1}: {mq.get('question')}"
+        p.font.size = Ptx(26)
+        p.font.bold = True
+        p.font.color.rgb = NAVY
+        
         if mq.get('options') and mq.get('options') != "无":
-            p = tf.add_paragraph()
-            p.text = f"    {mq.get('options')}"
-            p.font.size = Ptx(18)
-            p.font.color.rgb = PtxRGBColor(0x55, 0x55, 0x55)
+            p2 = tf.add_paragraph()
+            p2.text = f"   {mq.get('options')}"
+            p2.font.size = Ptx(22)
+            p2.font.color.rgb = GRAY
+        
+        top_offset += 1.6
         notes_text_quiz += f"Q{idx+1} Key: {mq.get('answer')}\n"
-    slide.notes_slide.notes_text_frame.text = notes_text_quiz
+    
+    slide_quiz.notes_slide.notes_text_frame.text = notes_text_quiz
 
-    # 6. 菜单式分层作业 
-    slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "🏆 Mission Menu"
-    tf = slide.placeholders[1].text_frame
+    # ==========================
+    # Slide HW: 菜单化分层作业 (三栏对比)
+    # ==========================
+    slide_hw = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide_hw, BG_LIGHT)
+    add_header(slide_hw, "🏆 Mission Menu", "Choose your personalized learning path")
+    
     hw = design_data.get('differentiated_homework', {})
+    col_width, col_height, top_margin = Inches(3.8), Inches(4.5), Inches(2)
     
-    p1 = tf.add_paragraph()
-    p1.text = f"🟢 One-Star Mission: \n   {hw.get('level_A', '')}"
+    # 🟢 Level A
+    shape_a = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.6), top_margin, col_width, col_height)
+    shape_a.fill.solid(); shape_a.fill.fore_color.rgb = WHITE; shape_a.line.color.rgb = GREEN
+    tf_a = shape_a.text_frame
+    tf_a.word_wrap = True
+    p_ah = tf_a.paragraphs[0]; p_ah.text = "🟢 Level A\nFoundation"; p_ah.font.size = Ptx(28); p_ah.font.bold = True; p_ah.font.color.rgb = GREEN
+    p_ac = tf_a.add_paragraph(); p_ac.text = f"\n{hw.get('level_A', '')}"; p_ac.font.size = Ptx(20); p_ac.font.color.rgb = NAVY
     
-    p2 = tf.add_paragraph()
-    p2.text = f"🟡 Two-Star Mission: \n   {hw.get('level_B', '')}"
-    
-    p3 = tf.add_paragraph()
-    p3.text = f"🔴 Three-Star Mission: \n   {hw.get('level_C', '')}"
+    # 🟡 Level B
+    shape_b = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(4.7), top_margin, col_width, col_height)
+    shape_b.fill.solid(); shape_b.fill.fore_color.rgb = WHITE; shape_b.line.color.rgb = GOLD
+    tf_b = shape_b.text_frame
+    tf_b.word_wrap = True
+    p_bh = tf_b.paragraphs[0]; p_bh.text = "🟡 Level B\nCore"; p_bh.font.size = Ptx(28); p_bh.font.bold = True; p_bh.font.color.rgb = GOLD
+    p_bc = tf_b.add_paragraph(); p_bc.text = f"\n{hw.get('level_B', '')}"; p_bc.font.size = Ptx(20); p_bc.font.color.rgb = NAVY
+
+    # 🔴 Level C
+    shape_c = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.8), top_margin, col_width, col_height)
+    shape_c.fill.solid(); shape_c.fill.fore_color.rgb = WHITE; shape_c.line.color.rgb = RED
+    tf_c = shape_c.text_frame
+    tf_c.word_wrap = True
+    p_ch = tf_c.paragraphs[0]; p_ch.text = "🔴 Level C\nChallenge"; p_ch.font.size = Ptx(28); p_ch.font.bold = True; p_ch.font.color.rgb = RED
+    p_cc = tf_c.add_paragraph(); p_cc.text = f"\n{hw.get('level_C', '')}"; p_cc.font.size = Ptx(20); p_cc.font.color.rgb = NAVY
 
     bio = io.BytesIO()
     prs.save(bio)
@@ -275,7 +452,7 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
-# 🌟 查词卡片渲染器 (原生 HTML5 Audio 防拦截)
+# 🌟 查词卡片渲染器
 def render_dictionary_card(word_data):
     word = safe_str(word_data.get('word', ''))
     phonetic = safe_str(word_data.get('phonetic', ''))
@@ -297,7 +474,7 @@ def render_dictionary_card(word_data):
     """
     st.markdown(dict_html, unsafe_allow_html=True)
 
-# 🌟 全局词汇表渲染引擎 (极致修复 Pandas DataFrame 的判空报错与发音问题)
+# 🌟 全局词汇表渲染引擎
 def render_html_vocab_table(v_list):
     if isinstance(v_list, pd.DataFrame):
         if v_list.empty: return
@@ -640,7 +817,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室
+# 🔍 模块：教研室 
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -753,9 +930,9 @@ elif page == "🔍 智能精读教研室":
         col_dl_1, col_dl_2, col_dl_3 = st.columns([1.5, 2, 1.5])
         with col_dl_2:
             st.write("")
-            with st.spinner("正在将教案打包为高清 PPT，请稍候..."):
+            with st.spinner("正在将教案打包为 16:9 高清 PPT，请稍候..."):
                 ppt_bytes = generate_beautiful_ppt(design)
-            st.download_button("📥 一键导出精美教学 PPT (含配图)", data=ppt_bytes, file_name=f"AI_Lesson_Plan_{design.get('topic', 'Lesson')}.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True, type="primary")
+            st.download_button("📥 一键导出精美教学 PPT (含自动排版配图与备注)", data=ppt_bytes, file_name=f"AI_Lesson_Plan_{design.get('topic', 'Lesson')}.pptx", mime="application/vnd.openxmlformats-officedocument.presentationml.presentation", use_container_width=True, type="primary")
         
         st.write("---")
 
