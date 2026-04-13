@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components 
 import json
 import pandas as pd
 import trafilatura
@@ -149,14 +148,13 @@ def generate_beautiful_word(analysis_data, full_text=""):
             row = table.add_row().cells; row[0].text, row[1].text, row[2].text, row[3].text = v.get('word',''), v.get('phonetic',''), v.get('translation',''), v.get('usage_examples','')
     bio = io.BytesIO(); doc.save(bio); return bio.getvalue()
 
-# 🌟 全新核武器：一键生成精美幻灯片 (PPT)
 def generate_beautiful_ppt(design_data):
     prs = Presentation()
     
     # 1. 封面 (极简大字)
     slide = prs.slides.add_slide(prs.slide_layouts[0])
     slide.shapes.title.text = design_data.get('topic', 'English Lesson')
-    slide.placeholders[1].text = "Immersive Reading Lesson"
+    slide.placeholders[1].text = "Immersive Reading Lesson\nPowered by Expert Teacher System"
 
     # 2. 教学目标 (隐藏对老师的要求，只展示学生要达成的目标)
     slide = prs.slides.add_slide(prs.slide_layouts[1])
@@ -165,13 +163,11 @@ def generate_beautiful_ppt(design_data):
     for obj in design_data.get('objectives', []):
         tf.add_paragraph().text = f"⭐ {obj}"
 
-    # 3. 动态教学环节 (🌟 核心爆改：大屏给学生看，话术藏进备注给老师看！)
+    # 3. 动态教学环节 (核心爆改：大屏给学生看，话术藏进备注给老师看)
     for step in design_data.get('teaching_steps', []):
-        # 使用只有标题的空白模板，留出巨大空间给图片和核心问题
         slide = prs.slides.add_slide(prs.slide_layouts[5]) 
         slide.shapes.title.text = f"✨ {step.get('step_name')}"
         
-        # 抓取高清配图放在正中间
         img_kw = step.get('image_keyword', '')
         if img_kw:
             try:
@@ -183,20 +179,18 @@ def generate_beautiful_ppt(design_data):
                     slide.shapes.add_picture(img_stream, Inches(1), Inches(1.5), width=Inches(8))
             except: pass
             
-        # 🌟 魔法在这里：把 Activity 和 Script 写进 PPT 的演讲者备注(Notes)里！
         notes_slide = slide.notes_slide
         text_frame = notes_slide.notes_text_frame
         text_frame.text = f"【老师请看这里】\n\n⏱️ Time: {step.get('duration')}\n\n💡 Activity: {step.get('activity')}\n\n🗣️ Script:\n{step.get('script')}"
 
-    # 4. 互动提问环节 (只放问题，不放答案)
+    # 4. 互动提问环节 (只放问题，答案在备注)
     slide = prs.slides.add_slide(prs.slide_layouts[1])
     slide.shapes.title.text = "❓ Let's Think..."
     tf = slide.placeholders[1].text_frame
     notes_text = "【老师专用答案解析】\n\n"
     for q in design_data.get('ccqs_questions', []):
         tf.add_paragraph().text = f"🤔 {q.get('question')}"
-        tf.add_paragraph().text = "" # 空一行
-        # 将答案写进备注
+        tf.add_paragraph().text = "" 
         notes_text += f"Q: {q.get('question')}\nA: {q.get('answer')}\n\n"
     slide.notes_slide.notes_text_frame.text = notes_text
 
@@ -212,13 +206,12 @@ def generate_beautiful_ppt(design_data):
             p.text = f"    {mq.get('options')}"
             p.font.size = Ptx(18)
             p.font.color.rgb = PtxRGBColor(0x55, 0x55, 0x55)
-        # 答案写进备注
         notes_text_quiz += f"Q{idx+1} Key: {mq.get('answer')}\n"
     slide.notes_slide.notes_text_frame.text = notes_text_quiz
 
     # 6. 菜单式分层作业 
     slide = prs.slides.add_slide(prs.slide_layouts[1])
-    slide.shapes.title.text = "🏆 Mission Menu (Choose your task)"
+    slide.shapes.title.text = "🏆 Mission Menu"
     tf = slide.placeholders[1].text_frame
     hw = design_data.get('differentiated_homework', {})
     
@@ -282,6 +275,29 @@ def export_styled_excel(df):
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
+# 🌟 查词卡片渲染器 (原生 HTML5 Audio 防拦截)
+def render_dictionary_card(word_data):
+    word = safe_str(word_data.get('word', ''))
+    phonetic = safe_str(word_data.get('phonetic', ''))
+    translation = safe_str(word_data.get('translation', ''))
+    memory_tip = safe_str(word_data.get('memory_tip', ''))
+    
+    safe_word = urllib.parse.quote(word).replace("'", "%27")
+    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
+    audio_player = f"<audio controls preload='none' style='height: 25px; width: 120px; margin-left: 8px; vertical-align: middle;'><source src='{audio_url}' type='audio/mpeg'></audio>"
+    
+    dict_html = f"""
+    <div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px; color: #2C3E50;'>
+        <strong style='font-size: 1.15em; color: #1A1A24;'>{word}</strong> 
+        <span style='color: #666; margin-left: 5px;'>{phonetic}</span> 
+        {audio_player}<br><br>
+        <strong>释义：</strong>{translation}<br><br>
+        <strong>记忆：</strong><span style='color: #555;'>{memory_tip}</span>
+    </div>
+    """
+    st.markdown(dict_html, unsafe_allow_html=True)
+
+# 🌟 全局词汇表渲染引擎 (极致修复 Pandas DataFrame 的判空报错与发音问题)
 def render_html_vocab_table(v_list):
     if isinstance(v_list, pd.DataFrame):
         if v_list.empty: return
@@ -604,12 +620,7 @@ elif page == "📚 公共教材图书馆":
                                 try:
                                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                     word_data = json.loads(res.choices[0].message.content)
-                                    
-                                    safe_word = urllib.parse.quote(word_data.get('word', '')).replace("'", "%27")
-                                    audio_url = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
-                                    audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_url}' type='audio/mpeg'></audio>"
-                                    
-                                    st.markdown(f"<div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px;'><b>{word_data.get('word')}</b> {word_data.get('phonetic')} {audio_player}<br><br><b>释义</b>：{word_data.get('translation')}<br><br><b>记忆</b>：{word_data.get('memory_tip')}</div>", unsafe_allow_html=True)
+                                    render_dictionary_card(word_data)
                                     word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
                                 except: st.error("查词失败")
                 with tab_clip:
@@ -737,10 +748,8 @@ elif page == "🔍 智能精读教研室":
         design = st.session_state['teaching_design']
         st.divider()
         
-        # 1. 顶部标题
         st.markdown(f"<div style='background-color:#1A1E2A; color:white; padding:30px; border-radius:12px; text-align:center;'><h2 style='color:white; margin-bottom:15px;'>🎯 {design.get('topic', 'English Lesson')}</h2><p style='color:#8892B0; font-size:1.1em;'>AI Powered Immersive Teaching Design</p></div>", unsafe_allow_html=True)
         
-        # 🌟 核心：一键导出 PPT 按钮
         col_dl_1, col_dl_2, col_dl_3 = st.columns([1.5, 2, 1.5])
         with col_dl_2:
             st.write("")
