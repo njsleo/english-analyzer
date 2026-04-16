@@ -146,218 +146,115 @@ def generate_beautiful_word(analysis_data, full_text=""):
     if v_list:
         doc.add_heading('三、 核心词汇表', level=2)
         table = doc.add_table(rows=1, cols=4); table.style = 'Table Grid'
-        for i, h in enumerate(['单词', '音标', '释义', '例句']): set_font(table.rows[0].cells[i].paragraphs[0].add_run(h))
+        # 🌟 Word 导出加入词性
+        for i, h in enumerate(['单词(词性)', '音标', '释义', '例句']): set_font(table.rows[0].cells[i].paragraphs[0].add_run(h))
         for v in v_list:
-            row = table.add_row().cells; row[0].text, row[1].text, row[2].text, row[3].text = v.get('word',''), v.get('phonetic',''), v.get('translation',''), v.get('usage_examples','')
+            row = table.add_row().cells
+            word_with_pos = f"{v.get('word','')} ({v.get('part_of_speech','')})" if v.get('part_of_speech') else v.get('word','')
+            row[0].text, row[1].text, row[2].text, row[3].text = word_with_pos, v.get('phonetic',''), v.get('translation',''), v.get('usage_examples','')
     bio = io.BytesIO(); doc.save(bio); return bio.getvalue()
 
-# 🌟 核心：史诗级 16:9 商业级 PPT 渲染引擎 2.0 (特级教师排版)
 def generate_beautiful_ppt(design_data):
     prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    prs.slide_height = Inches(7.5)
+    prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)
 
-    NAVY = PtxRGBColor(0x1A, 0x1E, 0x2A)
-    WHITE = PtxRGBColor(0xFF, 0xFF, 0xFF)
-    GREEN = PtxRGBColor(0x3A, 0x5F, 0x40)
-    BG_LIGHT = PtxRGBColor(0xF5, 0xF7, 0xEC)
-    GOLD = PtxRGBColor(0xD4, 0x8A, 0x00)
-    RED = PtxRGBColor(0xC0, 0x00, 0x00)
-    GRAY = PtxRGBColor(0x66, 0x66, 0x66)
+    NAVY = PtxRGBColor(0x1A, 0x1E, 0x2A); WHITE = PtxRGBColor(0xFF, 0xFF, 0xFF); GREEN = PtxRGBColor(0x3A, 0x5F, 0x40)
+    BG_LIGHT = PtxRGBColor(0xF5, 0xF7, 0xEC); GOLD = PtxRGBColor(0xD4, 0x8A, 0x00); RED = PtxRGBColor(0xC0, 0x00, 0x00); GRAY = PtxRGBColor(0x66, 0x66, 0x66)
 
-    def set_slide_bg(slide, color):
-        bg = slide.background
-        fill = bg.fill
-        fill.solid()
-        fill.fore_color.rgb = color
-
+    def set_slide_bg(slide, color): bg = slide.background; fill = bg.fill; fill.solid(); fill.fore_color.rgb = color
     def add_header(slide, title, subtitle="", is_dark=False):
-        header_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(1.2))
-        header_shape.fill.solid()
-        header_shape.fill.fore_color.rgb = NAVY if not is_dark else WHITE
-        header_shape.line.color.rgb = NAVY if not is_dark else WHITE
-        
+        header_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(13.333), Inches(1.2)); header_shape.fill.solid(); header_shape.fill.fore_color.rgb = NAVY if not is_dark else WHITE; header_shape.line.color.rgb = NAVY if not is_dark else WHITE
         txBox = slide.shapes.add_textbox(Inches(0.5), Inches(0.1), Inches(12), Inches(1))
-        tf = txBox.text_frame
-        p = tf.paragraphs[0]
-        p.text = title
-        p.font.size = Ptx(36)
-        p.font.bold = True
-        p.font.color.rgb = WHITE if not is_dark else NAVY
-        if subtitle:
-            p2 = tf.add_paragraph()
-            p2.text = subtitle
-            p2.font.size = Ptx(18)
-            p2.font.color.rgb = GOLD if not is_dark else GRAY
+        tf = txBox.text_frame; p = tf.paragraphs[0]; p.text = title; p.font.size = Ptx(36); p.font.bold = True; p.font.color.rgb = WHITE if not is_dark else NAVY
+        if subtitle: p2 = tf.add_paragraph(); p2.text = subtitle; p2.font.size = Ptx(18); p2.font.color.rgb = GOLD if not is_dark else GRAY
 
-    # ==========================
-    # Slide 1: 封面页
-    # ==========================
     slide_title = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_bg(slide_title, NAVY)
     txBox = slide_title.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11.333), Inches(2))
-    tf = txBox.text_frame
-    p = tf.paragraphs[0]
-    p.text = design_data.get('topic', 'English Lesson')
-    p.font.size = Ptx(54); p.font.bold = True; p.font.color.rgb = WHITE; p.alignment = PP_ALIGN.CENTER
-    p2 = tf.add_paragraph()
-    p2.text = "\nImmersive Reading Lesson\nPowered by Expert Teacher System"
-    p2.font.size = Ptx(24); p.font.color.rgb = GOLD; p2.alignment = PP_ALIGN.CENTER
+    tf = txBox.text_frame; p = tf.paragraphs[0]; p.text = design_data.get('topic', 'English Lesson'); p.font.size = Ptx(54); p.font.bold = True; p.font.color.rgb = WHITE; p.alignment = PP_ALIGN.CENTER
+    p2 = tf.add_paragraph(); p2.text = "\nImmersive Reading Lesson\nPowered by Expert Teacher System"; p2.font.size = Ptx(24); p2.font.color.rgb = GOLD; p2.alignment = PP_ALIGN.CENTER
 
-    # ==========================
-    # Slide 2: 教学目标
-    # ==========================
     slide_obj = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide_obj, BG_LIGHT)
-    add_header(slide_obj, "🎯 Focus of Today", "What we will achieve")
+    set_slide_bg(slide_obj, BG_LIGHT); add_header(slide_obj, "🎯 Focus of Today", "Learning Objectives")
     top_offset = 1.8
     for obj in design_data.get('objectives', []):
         shape = slide_obj.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(top_offset), Inches(11.333), Inches(1.2))
         shape.fill.solid(); shape.fill.fore_color.rgb = WHITE; shape.line.color.rgb = GREEN
-        tf = shape.text_frame; tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        p = tf.paragraphs[0]; p.text = f"⭐ {obj}"; p.font.size = Ptx(24); p.font.color.rgb = NAVY
-        top_offset += 1.5
+        tf = shape.text_frame; tf.vertical_anchor = MSO_ANCHOR.MIDDLE; p = tf.paragraphs[0]; p.text = f"⭐ {obj}"; p.font.size = Ptx(24); p.font.color.rgb = NAVY; top_offset += 1.5
 
-    # ==========================
-    # Slide 3: 核心词汇大字卡 (NEW!)
-    # ==========================
     vocab_list = design_data.get('key_vocabulary', [])
     if vocab_list:
         slide_voc = prs.slides.add_slide(prs.slide_layouts[6])
-        set_slide_bg(slide_voc, BG_LIGHT)
-        add_header(slide_voc, "📚 Core Vocabulary", "Words we need to master")
-        # 自动排版为两列卡片
-        col_w = Inches(5.2); row_h = Inches(1.2)
-        start_x = Inches(1); start_y = Inches(1.8)
-        for i, word in enumerate(vocab_list[:8]): # 最多展示8个
-            x = start_x if i % 2 == 0 else start_x + col_w + Inches(0.5)
-            y = start_y + (i // 2) * (row_h + Inches(0.3))
-            shape = slide_voc.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, col_w, row_h)
-            shape.fill.solid(); shape.fill.fore_color.rgb = WHITE; shape.line.color.rgb = GOLD
+        set_slide_bg(slide_voc, BG_LIGHT); add_header(slide_voc, "📚 Core Vocabulary", "Words we need to master")
+        col_w = Inches(5.2); row_h = Inches(1.2); start_x = Inches(1); start_y = Inches(1.8)
+        for i, word in enumerate(vocab_list[:8]):
+            x = start_x if i % 2 == 0 else start_x + col_w + Inches(0.5); y = start_y + (i // 2) * (row_h + Inches(0.3))
+            shape = slide_voc.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, x, y, col_w, row_h); shape.fill.solid(); shape.fill.fore_color.rgb = WHITE; shape.line.color.rgb = GOLD
             tf = shape.text_frame; tf.vertical_anchor = MSO_ANCHOR.MIDDLE; tf.word_wrap = True
-            p = tf.paragraphs[0]; p.text = f"🔸 {word}"; p.font.size = Ptx(26); p.font.color.rgb = NAVY; p.font.bold = True
+            p = tf.paragraphs[0]; p.text = f"🔸 {word}"; p.font.size = Ptx(24); p.font.color.rgb = NAVY; p.font.bold = True
 
-    # ==========================
-    # Slide 4: 长难句鉴赏 (NEW!)
-    # ==========================
     gs_list = design_data.get('golden_sentences', [])
     if gs_list:
-        for gs in gs_list[:2]: # 最多展示2句
+        for gs in gs_list[:2]:
             slide_gs = prs.slides.add_slide(prs.slide_layouts[6])
-            set_slide_bg(slide_gs, NAVY)
-            add_header(slide_gs, "💎 Golden Sentence", "Deep Dive", is_dark=True)
-            
-            # 原句展示大字
-            shape_s = slide_gs.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(2), Inches(11.333), Inches(2.5))
-            shape_s.fill.background(); shape_s.line.fill.background()
-            tf_s = shape_s.text_frame; tf_s.word_wrap = True
-            p_s = tf_s.paragraphs[0]; p_s.text = f"\"{gs.get('sentence', '')}\""; p_s.font.size = Ptx(36); p_s.font.color.rgb = GOLD; p_s.font.italic = True
-            
-            # 语法分析框
-            shape_a = slide_gs.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(5), Inches(11.333), Inches(1.5))
-            shape_a.fill.solid(); shape_a.fill.fore_color.rgb = WHITE
-            tf_a = shape_a.text_frame; tf_a.word_wrap = True; tf_a.vertical_anchor = MSO_ANCHOR.MIDDLE
-            p_a = tf_a.paragraphs[0]; p_a.text = f"💡 Analysis: {gs.get('analysis', '')}"; p_a.font.size = Ptx(22); p_a.font.color.rgb = NAVY
+            set_slide_bg(slide_gs, NAVY); add_header(slide_gs, "💎 Golden Sentence", "Deep Dive", is_dark=True)
+            shape_s = slide_gs.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(2), Inches(11.333), Inches(2.5)); shape_s.fill.background(); shape_s.line.fill.background()
+            tf_s = shape_s.text_frame; tf_s.word_wrap = True; p_s = tf_s.paragraphs[0]; p_s.text = f"\"{gs.get('sentence', '')}\""; p_s.font.size = Ptx(36); p_s.font.color.rgb = GOLD; p_s.font.italic = True
+            shape_a = slide_gs.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(5), Inches(11.333), Inches(1.5)); shape_a.fill.solid(); shape_a.fill.fore_color.rgb = WHITE
+            tf_a = shape_a.text_frame; tf_a.word_wrap = True; tf_a.vertical_anchor = MSO_ANCHOR.MIDDLE; p_a = tf_a.paragraphs[0]; p_a.text = f"💡 Analysis: {gs.get('analysis', '')}"; p_a.font.size = Ptx(22); p_a.font.color.rgb = NAVY
 
-    # ==========================
-    # Slide 5: 教学步骤 (大屏留白，话术进备注)
-    # ==========================
     for step in design_data.get('teaching_steps', []):
         slide_step = prs.slides.add_slide(prs.slide_layouts[6])
-        set_slide_bg(slide_step, BG_LIGHT)
-        add_header(slide_step, f"✨ {step.get('step_name')}", f"⏱️ Time: {step.get('duration')}")
-        
-        # 左侧：极简指令大字
+        set_slide_bg(slide_step, BG_LIGHT); add_header(slide_step, f"✨ {step.get('step_name')}", f"⏱️ Time: {step.get('duration')}")
         txBox = slide_step.shapes.add_textbox(Inches(0.5), Inches(2.0), Inches(5), Inches(5.0))
-        tf = txBox.text_frame; tf.word_wrap = True
-        p = tf.paragraphs[0]; p.text = "💡 Activity Task:"; p.font.size = Ptx(32); p.font.bold = True; p.font.color.rgb = NAVY
-        p2 = tf.add_paragraph(); p2.text = f"\n{step.get('activity', '')}"; p2.font.size = Ptx(26); p2.font.color.rgb = NAVY
-
-        # 右侧：8K 高清大图铺满
+        tf = txBox.text_frame; tf.word_wrap = True; p = tf.paragraphs[0]; p.text = "💡 Activity Focus:"; p.font.size = Ptx(28); p.font.bold = True; p.font.color.rgb = NAVY
+        p2 = tf.add_paragraph(); p2.text = f"\n{step.get('activity', '')}"; p2.font.size = Ptx(22); p2.font.color.rgb = NAVY
         img_kw = step.get('image_keyword', '')
         if img_kw:
             try:
-                safe_kw = urllib.parse.quote(img_kw)
-                img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=1200&height=800&nologo=true"
-                resp = requests.get(img_url, timeout=8) 
+                safe_kw = urllib.parse.quote(img_kw); img_url = f"https://image.pollinations.ai/prompt/{safe_kw}?width=1200&height=800&nologo=true"
+                resp = requests.get(img_url, timeout=5) 
                 if resp.status_code == 200:
-                    img_stream = io.BytesIO(resp.content)
-                    slide_step.shapes.add_picture(img_stream, Inches(6.0), Inches(1.8), width=Inches(6.8))
+                    img_stream = io.BytesIO(resp.content); slide_step.shapes.add_picture(img_stream, Inches(5.8), Inches(1.8), width=Inches(7))
             except: pass
+        notes_slide = slide_step.notes_slide; notes_tf = notes_slide.notes_text_frame; notes_tf.text = f"【老师专享话术】\n\nScript:\n{step.get('script')}"
 
-        # 🌟 魔法：将话术藏入演讲者备注
-        notes_slide = slide_step.notes_slide
-        notes_tf = notes_slide.notes_text_frame
-        notes_tf.text = f"【TEACHER'S SCRIPT (老师照此念)】\n\n{step.get('script')}"
-
-    # ==========================
-    # Slide 6: 夺命连环追问 (一题一页，黑底金字压迫感)
-    # ==========================
     for idx, q in enumerate(design_data.get('ccqs_questions', [])):
         slide_q = prs.slides.add_slide(prs.slide_layouts[6])
-        set_slide_bg(slide_q, NAVY)
-        add_header(slide_q, f"❓ Question {idx+1}", "Let's Think...", is_dark=True)
-        
-        # 屏幕中间只显示巨大问题
+        set_slide_bg(slide_q, NAVY); add_header(slide_q, f"❓ Question {idx+1}", "Let's Think...", is_dark=True)
         txBox = slide_q.shapes.add_textbox(Inches(1), Inches(3), Inches(11.333), Inches(3))
-        tf = txBox.text_frame; tf.word_wrap = True; tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-        p = tf.paragraphs[0]; p.text = f"🤔 {q.get('question')}"; p.font.size = Ptx(48); p.font.color.rgb = WHITE; p.alignment = PP_ALIGN.CENTER
-        
-        # 答案藏在备注里
+        tf = txBox.text_frame; tf.word_wrap = True; tf.vertical_anchor = MSO_ANCHOR.MIDDLE; p = tf.paragraphs[0]; p.text = f"🤔 {q.get('question')}"; p.font.size = Ptx(48); p.font.color.rgb = WHITE; p.alignment = PP_ALIGN.CENTER
         slide_q.notes_slide.notes_text_frame.text = f"【标准答案解析】\n\nAnswer: {q.get('answer')}"
 
-    # ==========================
-    # Slide 7: 随堂小测 (一题一页)
-    # ==========================
     for idx, mq in enumerate(design_data.get('mini_quiz', [])):
         slide_mq = prs.slides.add_slide(prs.slide_layouts[6])
-        set_slide_bg(slide_mq, BG_LIGHT)
-        add_header(slide_mq, f"📝 Mini-Quiz {idx+1}", "Quick Assessment")
-        
+        set_slide_bg(slide_mq, BG_LIGHT); add_header(slide_mq, f"📝 Mini-Quiz {idx+1}", "Quick Assessment")
         txBox = slide_mq.shapes.add_textbox(Inches(1), Inches(2.5), Inches(11.333), Inches(3))
-        tf = txBox.text_frame; tf.word_wrap = True
-        p = tf.paragraphs[0]; p.text = f"[{mq.get('type')}] {mq.get('question')}"; p.font.size = Ptx(40); p.font.bold = True; p.font.color.rgb = NAVY
-        
+        tf = txBox.text_frame; tf.word_wrap = True; p = tf.paragraphs[0]; p.text = f"[{mq.get('type')}] {mq.get('question')}"; p.font.size = Ptx(40); p.font.bold = True; p.font.color.rgb = NAVY
         if mq.get('options') and mq.get('options') != "无":
-            p2 = tf.add_paragraph()
-            p2.text = f"\n{mq.get('options')}"
-            p2.font.size = Ptx(32)
-            p2.font.color.rgb = GRAY
-            
-        # 答案在备注里
+            p2 = tf.add_paragraph(); p2.text = f"\n{mq.get('options')}"; p2.font.size = Ptx(32); p2.font.color.rgb = GRAY
         slide_mq.notes_slide.notes_text_frame.text = f"【正确答案】\n\nKey: {mq.get('answer')}"
 
-    # ==========================
-    # Slide 8: 分层作业菜单 (三卡片并列)
-    # ==========================
     slide_hw = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide_hw, BG_LIGHT)
-    add_header(slide_hw, "🏆 Mission Menu", "Choose your challenge")
-    
-    hw = design_data.get('differentiated_homework', {})
-    col_width, col_height, top_margin = Inches(3.8), Inches(4.5), Inches(2)
+    set_slide_bg(slide_hw, BG_LIGHT); add_header(slide_hw, "🏆 Mission Menu", "Choose your challenge")
+    hw = design_data.get('differentiated_homework', {}); col_width, col_height, top_margin = Inches(3.8), Inches(4.5), Inches(2)
     
     shape_a = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.6), top_margin, col_width, col_height)
     shape_a.fill.solid(); shape_a.fill.fore_color.rgb = WHITE; shape_a.line.color.rgb = GREEN
-    tf_a = shape_a.text_frame; tf_a.word_wrap = True
-    p_ah = tf_a.paragraphs[0]; p_ah.text = "🟢 Level A\nFoundation"; p_ah.font.size = Ptx(28); p_ah.font.bold = True; p_ah.font.color.rgb = GREEN
+    tf_a = shape_a.text_frame; tf_a.word_wrap = True; p_ah = tf_a.paragraphs[0]; p_ah.text = "🟢 Level A\nFoundation"; p_ah.font.size = Ptx(28); p_ah.font.bold = True; p_ah.font.color.rgb = GREEN
     p_ac = tf_a.add_paragraph(); p_ac.text = f"\n{hw.get('level_A', '')}"; p_ac.font.size = Ptx(22); p_ac.font.color.rgb = NAVY
     
     shape_b = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(4.7), top_margin, col_width, col_height)
     shape_b.fill.solid(); shape_b.fill.fore_color.rgb = WHITE; shape_b.line.color.rgb = GOLD
-    tf_b = shape_b.text_frame; tf_b.word_wrap = True
-    p_bh = tf_b.paragraphs[0]; p_bh.text = "🟡 Level B\nCore"; p_bh.font.size = Ptx(28); p_bh.font.bold = True; p_bh.font.color.rgb = GOLD
+    tf_b = shape_b.text_frame; tf_b.word_wrap = True; p_bh = tf_b.paragraphs[0]; p_bh.text = "🟡 Level B\nCore"; p_bh.font.size = Ptx(28); p_bh.font.bold = True; p_bh.font.color.rgb = GOLD
     p_bc = tf_b.add_paragraph(); p_bc.text = f"\n{hw.get('level_B', '')}"; p_bc.font.size = Ptx(22); p_bc.font.color.rgb = NAVY
 
     shape_c = slide_hw.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.8), top_margin, col_width, col_height)
     shape_c.fill.solid(); shape_c.fill.fore_color.rgb = WHITE; shape_c.line.color.rgb = RED
-    tf_c = shape_c.text_frame; tf_c.word_wrap = True
-    p_ch = tf_c.paragraphs[0]; p_ch.text = "🔴 Level C\nChallenge"; p_ch.font.size = Ptx(28); p_ch.font.bold = True; p_ch.font.color.rgb = RED
+    tf_c = shape_c.text_frame; tf_c.word_wrap = True; p_ch = tf_c.paragraphs[0]; p_ch.text = "🔴 Level C\nChallenge"; p_ch.font.size = Ptx(28); p_ch.font.bold = True; p_ch.font.color.rgb = RED
     p_cc = tf_c.add_paragraph(); p_cc.text = f"\n{hw.get('level_C', '')}"; p_cc.font.size = Ptx(22); p_cc.font.color.rgb = NAVY
 
-    bio = io.BytesIO()
-    prs.save(bio)
-    return bio.getvalue()
+    bio = io.BytesIO(); prs.save(bio); return bio.getvalue()
 
 def fetch_text_smart(url): 
     try: return trafilatura.extract(trafilatura.fetch_url(url)) if trafilatura.fetch_url(url) else "⚠️ 未能识别正文"
@@ -365,17 +262,13 @@ def fetch_text_smart(url):
 
 def extract_text_from_file(uploaded_file):
     if uploaded_file.type == "text/plain": return uploaded_file.read().decode("utf-8")
-    elif uploaded_file.type == "application/pdf":
-        return "\n".join([page.extract_text() for page in PdfReader(uploaded_file).pages if page.extract_text()])
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return "\n".join([para.text for para in Document(uploaded_file).paragraphs])
+    elif uploaded_file.type == "application/pdf": return "\n".join([page.extract_text() for page in PdfReader(uploaded_file).pages if page.extract_text()])
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document": return "\n".join([para.text for para in Document(uploaded_file).paragraphs])
     return ""
 
 def format_reading_text(text):
-    cleaned = re.sub(r'\n\s*\n', '§§§', text)
-    cleaned = cleaned.replace('\n', ' ')
-    paragraphs = [p.strip() for p in cleaned.split('§§§') if p.strip()]
-    html = ""
+    cleaned = re.sub(r'\n\s*\n', '§§§', text); cleaned = cleaned.replace('\n', ' ')
+    paragraphs = [p.strip() for p in cleaned.split('§§§') if p.strip()]; html = ""
     for p in paragraphs: html += f"<div style='margin-bottom: 10px;'>{p}</div>"
     return html
 
@@ -402,12 +295,14 @@ def export_styled_excel(df):
                 cell.fill = row_fill; cell.font = base_font
                 if col_num in [1, 2, 4]: cell.alignment = align_center
                 else: cell.alignment = align_left
-        col_widths = {'A': 16, 'B': 18, 'C': 35, 'D': 10, 'E': 45, 'F': 60}
+        col_widths = {'A': 16, 'B': 10, 'C': 18, 'D': 35, 'E': 10, 'F': 45, 'G': 60}
         for col, width in col_widths.items(): worksheet.column_dimensions[col].width = width
     return output.getvalue()
 
+# 🌟 查词卡片渲染器 (加入词性高亮)
 def render_dictionary_card(word_data):
     word = safe_str(word_data.get('word', ''))
+    pos = safe_str(word_data.get('part_of_speech', ''))
     phonetic = safe_str(word_data.get('phonetic', ''))
     translation = safe_str(word_data.get('translation', ''))
     memory_tip = safe_str(word_data.get('memory_tip', ''))
@@ -419,6 +314,7 @@ def render_dictionary_card(word_data):
     dict_html = f"""
     <div style='background-color:#F5F7EC; padding:15px; border-radius:6px; border:1px solid #D8DFD0; margin-bottom:10px; color: #2C3E50;'>
         <strong style='font-size: 1.15em; color: #1A1A24;'>{word}</strong> 
+        <span style='color: #C00000; font-style: italic; margin-left: 5px;'>{pos}</span> 
         <span style='color: #666; margin-left: 5px;'>{phonetic}</span> 
         {audio_player}<br><br>
         <strong>释义：</strong>{translation}<br><br>
@@ -427,6 +323,7 @@ def render_dictionary_card(word_data):
     """
     st.markdown(dict_html, unsafe_allow_html=True)
 
+# 🌟 全局词汇表渲染引擎 (加入词性独立列)
 def render_html_vocab_table(v_list):
     if isinstance(v_list, pd.DataFrame):
         if v_list.empty: return
@@ -434,10 +331,11 @@ def render_html_vocab_table(v_list):
     elif not v_list:
         return
     
-    html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标 & 发音</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
+    html_table = "<div style='max-height: 600px; overflow-y: auto; border: 1px solid #D8DFD0; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px;'><table style='width: 100%; border-collapse: collapse; background-color: #F5F7EC; text-align: left; font-family: \"Times New Roman\", serif;'><thead style='position: sticky; top: 0; background-color: #DFE6D8; z-index: 1;'><tr><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>单词</th><th style='padding: 12px 10px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>词性</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>音标 & 发音</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>释义</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>级别</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>记忆法</th><th style='padding: 12px 16px; border-bottom: 1px solid #D8DFD0; color: #1F4E79;'>实用例句</th></tr></thead><tbody>"
     
     for row in v_list:
         word = safe_str(row.get('word', ''))
+        pos = safe_str(row.get('part_of_speech', ''))
         phonetic = safe_str(row.get('phonetic', ''))
         translation = safe_str(row.get('translation', ''))
         tags = safe_str(row.get('tags', ''))
@@ -450,7 +348,7 @@ def render_html_vocab_table(v_list):
         audio_link = f"https://dict.youdao.com/dictvoice?audio={safe_word}&type=2"
         audio_player = f"<audio controls preload='none' style='height: 25px; width: 100px; margin-left: 8px; vertical-align: middle;'><source src='{audio_link}' type='audio/mpeg'></audio>"
         
-        html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='padding: 12px 16px; color: #666; white-space: nowrap;'>{phonetic}{audio_player}</td><td style='padding: 12px 16px; color: #2C3E50;'>{translation}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{tags}</span></td><td style='padding: 12px 16px; color: #555;'>{memory_tip}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{usage_examples}</td></tr>"
+        html_table += f"<tr style='border-bottom: 1px solid #EAECEF;'><td style='padding: 12px 16px; font-weight: bold; color: #1A1A24; font-size: 1.1em;'>{word}</td><td style='padding: 12px 10px; color: #C00000; font-style: italic;'>{pos}</td><td style='padding: 12px 16px; color: #666; white-space: nowrap;'>{phonetic}{audio_player}</td><td style='padding: 12px 16px; color: #2C3E50;'>{translation}</td><td style='padding: 12px 16px;'><span style='background-color:#D3DCCB; padding:3px 8px; border-radius:4px; font-size:0.85em; color:#111;'>{tags}</span></td><td style='padding: 12px 16px; color: #555;'>{memory_tip}</td><td style='padding: 12px 16px; color: #444; font-size: 0.9em;'>{usage_examples}</td></tr>"
         
     html_table += "</tbody></table></div>"
     st.markdown(html_table, unsafe_allow_html=True)
@@ -534,7 +432,7 @@ if not IS_SUPER_ADMIN and is_expired:
 # ==========================================
 # 🌟 全局导航栏 
 # ==========================================
-menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲"]
+menu_options = ["📚 公共教材图书馆", "🔍 智能精读教研室", "🗂️ 文章分类档案馆", "🔠 词库与大纲", "🎬 视频解析(极速版)"]
 if IS_SUPER_ADMIN: menu_options.append("👑 创始人控制台") 
 
 if 'nav_page' not in st.session_state: st.session_state['nav_page'] = "📚 公共教材图书馆"
@@ -745,13 +643,13 @@ elif page == "📚 公共教材图书馆":
                     if st.button("💡 翻译并存库", type="primary", use_container_width=True, key="lib_btn_trans"):
                         if lookup_word:
                             with st.spinner("查词中..."):
-                                prompt = f"""分析单词: {lookup_word}。返回纯JSON: {{"word":"{lookup_word}","phonetic":"音标","translation":"精准中文释义","memory_tip":"一句精简的词根或联想记忆法","usage_examples":"一个简短实用的英文例句及中文","tags":"阅读生词"}}"""
+                                prompt = f"""分析单词: {lookup_word}。返回纯JSON: {{"word":"{lookup_word}","part_of_speech":"词性(如n./v./adj.)","phonetic":"音标","translation":"精准中文释义","memory_tip":"一句精简的词根或联想记忆法","usage_examples":"一个简短实用的英文例句及中文","tags":"阅读生词"}}"""
                                 try:
                                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                     word_data = json.loads(res.choices[0].message.content)
                                     render_dictionary_card(word_data)
                                     word_data['user_id'] = CURRENT_USER_ID; supabase.table('vocabulary').insert(word_data).execute(); st.success("✅ 已存入记忆库")
-                                except: st.error("查词失败")
+                                except: st.error("查词失败，可能数据库表缺少 part_of_speech 字段，请检查 Supabase 设置。")
                 with tab_clip:
                     st.caption("复制左侧难句解析")
                     clip_sentence = st.text_area("输入句子", label_visibility="collapsed", height=100, placeholder="粘贴想精读的句子...", key="lib_clip_input")
@@ -769,7 +667,7 @@ elif page == "📚 公共教材图书馆":
                                 except: st.error("解析失败")
 
 # ==========================================
-# 🔍 模块：教研室 
+# 🔍 模块：教研室
 # ==========================================
 elif page == "🔍 智能精读教研室":
     col1, col2 = st.columns([4, 1])
@@ -791,7 +689,7 @@ elif page == "🔍 智能精读教研室":
         if not final_text.strip(): st.error("请先输入文本")
         else:
             with st.spinner("AI 正在深度切片文章..."):
-                prompt = f"""以JSON格式输出全句拆解：{{"sentences": [{{"en": "原句英文", "cn": "翻译", "syntax": "极简语法", "words": "核心词法"}}], "core_vocabulary": [{{"word": "单词", "phonetic": "音标", "translation": "释义", "memory_tip": "记忆法", "usage_examples": "造句", "tags": "级别"}}]}} 待分析：\n{final_text[:5000]}""" 
+                prompt = f"""以JSON格式输出全句拆解：{{"sentences": [{{"en": "原句英文", "cn": "翻译", "syntax": "极简语法", "words": "核心词法"}}], "core_vocabulary": [{{"word": "单词", "part_of_speech": "词性(如n./v./adj.)", "phonetic": "音标", "translation": "释义", "memory_tip": "记忆法", "usage_examples": "造句", "tags": "级别"}}]}} 待分析：\n{final_text[:5000]}""" 
                 try:
                     res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                     st.session_state['analysis_result'] = json.loads(res.choices[0].message.content)
@@ -804,13 +702,15 @@ elif page == "🔍 智能精读教研室":
         if not final_text.strip(): st.error("请先输入文本")
         else:
             with st.spinner("🧑‍🏫 AI 特级教师正在为您规划板书、闪卡、提问、小测与作业，请稍候..."):
-                # 🌟 核心：增强版 AI 指令，增加核心词汇闪卡和长难句鉴赏
                 prompt = f"""你是一位拥有20年经验的特级英语教研组长。请根据以下英文文本，为教师设计一堂极具启发性的英语教学全案PPT剧本。
                 必须严格返回纯JSON格式数据。格式如下：
                 {{
                   "topic": "引人入胜的课程主题",
                   "objectives": ["目标1", "目标2", "目标3"],
-                  "key_vocabulary": ["word1 (中文释义)", "word2 (中文释义)", "word3 (中文释义)", "word4 (中文释义)"],
+                  "key_vocabulary": ["word1", "word2", "word3", "word4"],
+                  "core_vocabulary": [
+                      {{"word": "单词", "part_of_speech": "词性(如n./v./adj.)", "phonetic": "音标", "translation": "精简释义", "memory_tip": "一句精简的词根或联想记忆法", "usage_examples": "一个简短的英文例句及中文", "tags": "级别"}}
+                  ],
                   "golden_sentences": [
                       {{"sentence": "原文中的最精华的一句长难句/优美句子", "analysis": "语法或句型亮点剖析(50字内)"}}
                   ],
@@ -865,7 +765,7 @@ elif page == "🔍 智能精读教研室":
                     supabase.table('articles').insert({"user_id": CURRENT_USER_ID, "content": st.session_state['article_content'], "teaching_plan": txt, "translation": json.dumps(res), "category": cat}).execute()
                     for v in res.get('core_vocabulary', []): v["user_id"] = CURRENT_USER_ID; supabase.table('vocabulary').insert(v).execute()
                     st.success("✅ 归档成功！")
-                except Exception: st.error("保存失败")
+                except Exception: st.error("保存失败，可能数据库缺少 part_of_speech 字段，请检查 Supabase 设置。")
         
         st.markdown("### 📝 逐句解析")
         for i, s in enumerate(res.get('sentences', [])):
@@ -901,7 +801,6 @@ elif page == "🔍 智能精读教研室":
                 st.markdown(f"- ✅ {obj}")
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Web 端渲染：核心词汇展示
             if design.get('key_vocabulary'):
                 st.markdown("<br>#### 📚 核心词汇 (Key Vocabulary)", unsafe_allow_html=True)
                 st.markdown("<div style='background:#F5F7EC; padding:15px; border-radius:8px; border:1px solid #D8DFD0;'>", unsafe_allow_html=True)
@@ -918,7 +817,6 @@ elif page == "🔍 智能精读教研室":
                 st.markdown(f"- 📌 {point}")
             st.markdown("</div>", unsafe_allow_html=True)
             
-            # Web 端渲染：长难句鉴赏
             if design.get('golden_sentences'):
                 st.markdown("<br>#### 💎 长难句鉴赏 (Golden Sentences)", unsafe_allow_html=True)
                 st.markdown("<div style='background:#1A1E2A; padding:15px; border-radius:8px; border:1px solid #2D2D3B;'>", unsafe_allow_html=True)
@@ -978,6 +876,12 @@ elif page == "🔍 智能精读教研室":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+            
+        v_list = design.get('core_vocabulary', [])
+        if v_list:
+            st.write("---")
+            st.markdown("### 📚 核心词汇表")
+            render_html_vocab_table(v_list)
 
 # ==========================================
 # 🗂️ 档案馆
@@ -1040,7 +944,9 @@ elif page == "🔠 词库与大纲":
                 
                 if manage_mode:
                     st.info("💡 请在表格第一列打钩（勾选）你要操作的单词。")
-                    df_manage = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].copy()
+                    # 防止由于缺失列导致的崩溃
+                    if 'part_of_speech' not in df_vocab.columns: df_vocab['part_of_speech'] = ""
+                    df_manage = df_vocab[['word', 'part_of_speech', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].copy()
                     df_manage.insert(0, "☑️ 勾选", False)
                     
                     edited_df = st.data_editor(
@@ -1057,6 +963,7 @@ elif page == "🔠 词库与大纲":
                     
                     export_cols_map = {
                         'word': '单词', 
+                        'part_of_speech': '词性',
                         'phonetic': '音标', 
                         'translation': '释义', 
                         'tags': '级别', 
@@ -1064,7 +971,7 @@ elif page == "🔠 词库与大纲":
                         'usage_examples': '例句'
                     }
                     
-                    df_export_all = df_vocab[['word', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].rename(columns=export_cols_map)
+                    df_export_all = df_vocab[['word', 'part_of_speech', 'phonetic', 'translation', 'tags', 'memory_tip', 'usage_examples']].rename(columns=export_cols_map)
                     excel_all = export_styled_excel(df_export_all)
                     c1.download_button("📥 导出【全部】生词本", excel_all, "我的全部生词本.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
                     
@@ -1110,13 +1017,13 @@ elif page == "🔠 词库与大纲":
                 if st.button("🤖 AI 一键解析并发布", type="primary"):
                     if v_title and v_raw.strip():
                         with st.spinner("AI 正在疯狂撰写解析库，请稍候..."):
-                            prompt = f"""作为英语教学专家，批量解析以下单词，并严格返回JSON格式：{{"core_vocabulary": [{{"word": "单词", "phonetic": "音标", "translation": "精简释义", "memory_tip": "一句精简的词根或联想记忆法", "usage_examples": "一个简短的英文例句及中文", "tags": "{v_level}"}}]}}。单词列表：\n{v_raw[:1000]}"""
+                            prompt = f"""作为英语教学专家，批量解析以下单词，并严格返回JSON格式：{{"core_vocabulary": [{{"word": "单词", "part_of_speech": "词性(如n./v./adj.)", "phonetic": "音标", "translation": "精简释义", "memory_tip": "一句精简的词根或联想记忆法", "usage_examples": "一个简短的英文例句及中文", "tags": "{v_level}"}}]}}。单词列表：\n{v_raw[:1000]}"""
                             try:
                                 res = llm_client.chat.completions.create(model="deepseek-chat", messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
                                 parsed_json = res.choices[0].message.content
                                 supabase.table('public_library').insert({"title": v_title, "category": "公共词库", "content": parsed_json}).execute()
                                 st.success("✅ 词库发布成功！全员可见。"); st.rerun()
-                            except Exception as e: st.error("解析失败，请减少单词数量重试。")
+                            except Exception as e: st.error("解析失败，可能数据库缺少 part_of_speech 字段，请检查。")
                     else: st.warning("请填写名称和录入单词。")
 
         try:
@@ -1141,3 +1048,62 @@ elif page == "🔠 词库与大纲":
             else:
                 st.info("🌍 馆长还没上传过大纲词汇，敬请期待！")
         except: pass
+
+# ==========================================
+# 🌟 模块：视频档案馆 (Whisper 极速版) 
+# ==========================================
+elif page == "🎬 视频解析(极速版)":
+    st.markdown("### 🎬 视频解析专家 (极速版)")
+    st.markdown("<div style='background-color:#1A1E2A; color:white; padding:15px; border-radius:8px; border-left:4px solid #D48A00; margin-bottom:20px;'>本模块为创始特权，极速版仅支持 25MB 内音频/视频。</div>", unsafe_allow_html=True)
+    
+    col_u, col_v = st.columns([1, 1], gap="large")
+    
+    with col_u:
+        up_v = st.file_uploader("📂 上传视频或音频文件", type=["mp4","avi","mp3","wav","m4a"])
+        
+    if up_v:
+        file_bytes = up_v.read()
+        file_size_mb = len(file_bytes) / (1024 * 1024)
+        
+        if file_size_mb > 25:
+            st.error(f"⚠️ 文件太大 (当前 {file_size_mb:.1f} MB)。极速版仅支持 25MB 内。")
+            st.stop()
+            
+        with col_v:
+            file_type = up_v.type.split('/')[0]
+            if file_type == 'video':
+                st.video(file_bytes)
+            else:
+                st.audio(file_bytes)
+                
+        st.write("---")
+        
+        if st.button("✨ 一键解析视频对白", type="primary", use_container_width=True):
+            with st.spinner("🛸 正在发送至 OpenAI 极速解析中心..."):
+                memory_file = io.BytesIO(file_bytes)
+                memory_file.name = up_v.name 
+                
+                try:
+                    client = OpenAI(api_key=DEEPSEEK_API_KEY) 
+                    transcript = client.audio.transcriptions.create(
+                      model="whisper-1", 
+                      file=memory_file
+                    )
+                    
+                    if transcript.text:
+                        st.session_state['video_transcript'] = transcript.text
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"❌ 解析失败。可能 DeepSeek API Key 不支持 OpenAI 模型，请联系管理员确认配置。\n错误：{str(e)}")
+
+    if st.session_state.get('video_transcript'):
+        st.markdown("#### 📖 视频对白精读剧本")
+        st.markdown(f"<div style='background-color:white; padding:20px; border-radius:8px; border:1px solid #D8DFD0; font-family:serif; color:#2C3E50; height:300px; overflow-y:auto; margin-bottom:15px;'>{st.session_state['video_transcript']}</div>", unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+        c1.download_button("📥 下载文字稿", data=st.session_state['video_transcript'], file_name="视频文字稿.txt", use_container_width=True)
+        if c2.button("🧠 将此对白一键全面备课", use_container_width=True):
+            st.session_state['temp_text'] = st.session_state['video_transcript']
+            st.session_state['nav_page'] = "🔍 智能精读教研室"
+            del st.session_state['video_transcript']
+            st.rerun()
